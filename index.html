@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>阪南大学トランポリンクラブ</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #0A1712; min-height: 100%; }
+  * { box-sizing: border-box; }
+  input, textarea, select, button { font-family: inherit; }
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
+
+  .app-shell { min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; color: #EAF3EC; }
+  .container { max-width: 480px; margin: 0 auto; padding: 28px 18px 96px; }
+
+  .draft-banner { border-radius: 10px; padding: 10px 12px; margin-bottom: 16px; background: #24230E; border: 1px solid #6B5A1E; color: #FFD870; font-size: 11px; line-height: 1.6; }
+
+  .header-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .app-logo { width: 38px; height: 38px; border-radius: 8px; display: block; flex-shrink: 0; object-fit: contain; background: #fff; padding: 3px; }
+  .app-title-wrap { min-width: 0; }
+  .app-title { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .app-tag { font-size: 10px; color: #6E8779; }
+
+  .tabs { display: flex; border-radius: 12px; padding: 4px; margin: 20px 0 16px; background: #10201A; border: 1px solid #234534; }
+  .tab-btn { flex: 1; padding: 9px 0; border-radius: 8px; font-size: 14px; font-weight: 500; border: none; cursor: pointer; background: transparent; color: #8FAA9B; }
+  .tab-btn.active { background: #22C17E; color: #052A1B; }
+
+  .section { display: flex; flex-direction: column; gap: 16px; }
+  .field-label { font-size: 12px; margin-bottom: 6px; display: block; color: #6E8779; }
+  .sub-label { font-size: 10px; color: #6E8779; margin: 2px 0 0; line-height: 1.5; }
+
+  .chip-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .chip-grid.two { grid-template-columns: repeat(2, 1fr); }
+  .chip-grid.four { grid-template-columns: repeat(4, 1fr); }
+  .chip-btn { padding: 10px 4px; border-radius: 8px; font-size: 12px; font-weight: 600; text-align: center; line-height: 1.25; cursor: pointer; background: #17301F; color: #EAF3EC; border: 1px solid #234534; }
+  .chip-btn.active { background: #22C17E; color: #052A1B; border-color: #22C17E; }
+  .chip-btn.amber.active { background: #FF9645; color: #2A1608; border-color: #FF9645; }
+  .chip-sub { display: block; font-size: 9px; font-weight: 400; opacity: .75; margin-top: 2px; }
+
+  .select-wrap { position: relative; }
+  .select-input { width: 100%; appearance: none; -webkit-appearance: none; border-radius: 8px; padding: 10px 32px 10px 12px; font-size: 14px; background: #17301F; border: 1px solid #234534; color: #EAF3EC; outline: none; }
+  .select-chevron { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+
+  .date-input, .text-input { width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 14px; background: #17301F; border: 1px solid #234534; color: #EAF3EC; outline: none; color-scheme: dark; }
+  .date-warning { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(255, 150, 69, 0.14); border: 1px solid rgba(255, 150, 69, 0.5); color: #FFB578; font-size: 12px; line-height: 1.5; }
+
+  .card { border-radius: 12px; padding: 14px; background: #10201A; border: 1px solid #234534; }
+  .card.raised { background: #17301F; }
+
+  .skill-info-card { border-radius: 10px; padding: 12px; background: #17301F; border: 1px solid #234534; }
+  .skill-info-name { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+  .skill-info-code { font-size: 10px; font-family: ui-monospace, monospace; color: #22C17E; background: #0A1712; border: 1px solid #24603F; border-radius: 6px; padding: 3px 6px; display: inline-block; margin-top: 4px; }
+  .dd-breakdown { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .dd-piece { flex: 1; min-width: 64px; border-radius: 8px; padding: 8px; background: #0A1712; border: 1px solid #234534; text-align: center; }
+  .dd-piece-label { font-size: 9px; color: #6E8779; }
+  .dd-piece-value { font-size: 15px; font-weight: 700; font-family: ui-monospace, monospace; margin-top: 2px; }
+  .dd-piece.total { background: #133220; border-color: #22C17E; }
+  .dd-piece.total .dd-piece-value { color: #3EDB98; }
+
+  .tech-row-list { display: flex; flex-direction: column; gap: 10px; }
+  .tech-row { border-radius: 10px; padding: 12px; background: #17301F; border: 1px solid #234534; display: flex; flex-direction: column; gap: 8px; }
+  .tech-row-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .tech-row-idx { font-size: 11px; color: #6E8779; font-family: ui-monospace, monospace; }
+  .remove-btn { width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #10201A; color: #6E8779; border: none; cursor: pointer; flex-shrink: 0; padding: 0; }
+  .code-badge { font-size: 10px; font-family: ui-monospace, monospace; color: #22C17E; background: #0A1712; border: 1px solid #24603F; border-radius: 6px; padding: 3px 6px; display: inline-block; }
+  .inline-row { display: flex; align-items: center; gap: 8px; }
+
+  .add-row-btn { margin-top: 2px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; font-size: 13px; padding: 10px 12px; border-radius: 8px; background: #10201A; border: 1px dashed #234534; color: #22C17E; cursor: pointer; }
+  .add-row-btn[disabled] { opacity: .4; cursor: not-allowed; }
+
+  .video-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .video-slot-label { font-size: 10px; color: #6E8779; margin-bottom: 4px; display: block; }
+  .video-add-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 64px; border-radius: 8px; background: #10201A; border: 1px dashed #234534; color: #9FBBAA; cursor: pointer; font-size: 11px; text-align: center; }
+  .video-add-btn.fail-tone { border-color: #6B4A1E; }
+  .video-slot-filled { position: relative; border-radius: 8px; overflow: hidden; height: 64px; background: #000; border: 1px solid #234534; cursor: pointer; }
+  .video-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .video-slot-name { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 24px 3px 6px; font-size: 9px; color: #EAF3EC; background: linear-gradient(0deg, rgba(0,0,0,.75), rgba(0,0,0,0)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .video-remove-btn { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(10,23,18,.85); color: #EAF3EC; border: none; cursor: pointer; padding: 0; }
+  .video-play-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 22px; height: 22px; border-radius: 50%; background: rgba(10,23,18,.55); display: flex; align-items: center; justify-content: center; }
+  .recent-video-btn { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; padding: 3px 7px 3px 5px; border-radius: 6px; border: 1px solid #234534; background: #17301F; color: #22C17E; cursor: pointer; }
+  .recent-video-btn.fail-tone { color: #FF9645; }
+
+  .video-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(4,10,8,.9); z-index: 100; align-items: center; justify-content: center; padding: 24px; color: #EAF3EC; }
+  .video-modal-overlay.open { display: flex; }
+  .video-modal-box { width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; }
+  .video-modal-box video { width: 100%; max-height: 70vh; border-radius: 10px; background: #000; display: block; }
+  .video-modal-caption { font-size: 12px; color: #9FBBAA; margin-top: 10px; text-align: center; }
+  .video-modal-close { margin: 14px auto 0; display: block; padding: 8px 18px; border-radius: 8px; background: #17301F; border: 1px solid #234534; color: #EAF3EC; font-size: 12px; cursor: pointer; }
+
+  .note-textarea { width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 14px; background: #17301F; border: 1px solid #234534; color: #EAF3EC; outline: none; resize: none; }
+
+  .num-field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+  .num-field-label { font-size: 10px; color: #6E8779; }
+  .num-input { border-radius: 8px; padding: 9px 8px; font-size: 12px; font-family: ui-monospace, monospace; background: #17301F; border: 1px solid #234534; color: #EAF3EC; outline: none; width: 100%; }
+
+  .save-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 0; border-radius: 12px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; background: #22C17E; color: #052A1B; }
+  .save-btn.flash { background: #3EDB98; }
+  .save-btn[disabled] { opacity: .4; cursor: not-allowed; }
+
+  .empty-card { border-radius: 12px; padding: 24px; text-align: center; font-size: 13px; background: #10201A; border: 1px solid #234534; color: #6E8779; line-height: 1.7; }
+
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stat-card { border-radius: 12px; padding: 14px; background: #10201A; border: 1px solid #234534; }
+  .stat-card.clickable { cursor: pointer; }
+  .stat-card.clickable:active { background: #17301F; }
+  .stat-label { font-size: 10px; color: #6E8779; margin-bottom: 4px; }
+  .stat-value { font-size: 18px; font-weight: 700; font-family: ui-monospace, monospace; }
+  .stat-sub { font-size: 10px; color: #6E8779; margin-top: 2px; }
+  .stat-sub.link { color: #22C17E; }
+
+  .chart-card { border-radius: 12px; padding: 16px; background: #10201A; border: 1px solid #234534; }
+  .chart-title { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; font-size: 12px; color: #6E8779; }
+  .chart-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .back-link { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 6px 10px; border-radius: 6px; background: #17301F; border: 1px solid #234534; color: #9FBBAA; cursor: pointer; }
+  .mini-toggle { display: flex; border-radius: 8px; padding: 2px; background: #0A1712; border: 1px solid #234534; }
+  .mini-toggle button { border: none; background: transparent; color: #8FAA9B; font-size: 10px; padding: 5px 9px; border-radius: 6px; cursor: pointer; }
+  .mini-toggle button.active { background: #22C17E; color: #052A1B; }
+
+  .rank-list { display: flex; flex-direction: column; gap: 8px; }
+  .rank-item { display: flex; align-items: center; gap: 10px; }
+  .rank-name { font-size: 11px; width: 80px; flex-shrink: 0; color: #EAF3EC; white-space: normal; line-height: 1.3; word-break: break-word; }
+  .rank-bar-wrap { flex: 1; height: 10px; border-radius: 5px; background: #17301F; overflow: hidden; }
+  .rank-bar { height: 100%; background: #22C17E; border-radius: 5px; }
+  .rank-bar.amber { background: #FF9645; }
+  .rank-count { font-size: 11px; width: 48px; text-align: right; flex-shrink: 0; color: #9FBBAA; font-family: ui-monospace, monospace; }
+
+  .chart-wrap { position: relative; width: 100%; }
+  .axis-ticks { position: relative; height: 16px; margin-top: 2px; }
+  .axis-ticks span { position: absolute; transform: translateX(-50%); font-size: 9px; color: #6E8779; white-space: nowrap; }
+
+  .chart-legend-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #9FBBAA; }
+  .legend-swatch { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+  .legend-swatch.dash { width: 16px; height: 0; border-top: 2px dashed; border-radius: 0; }
+
+  .recent-title { font-size: 12px; margin-bottom: 8px; color: #6E8779; }
+  .recent-list { display: flex; flex-direction: column; gap: 8px; }
+  .recent-item { border-radius: 8px; padding: 10px 12px; background: #10201A; border: 1px solid #234534; }
+  .recent-top-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .recent-date { font-size: 12px; font-family: ui-monospace, monospace; color: #9FBBAA; }
+  .recent-mode-badge { font-size: 9px; padding: 2px 6px; border-radius: 5px; background: #17301F; border: 1px solid #234534; color: #9FBBAA; }
+  .recent-mode-badge.routine { color: #22C17E; border-color: #24603F; }
+  .recent-mode-badge.airtime { color: #FF9645; border-color: #5A3A1E; }
+  .recent-meta { font-size: 10px; color: #6E8779; margin-top: 3px; }
+  .recent-content { font-size: 13px; margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .recent-tech-chip { font-size: 11px; background: #17301F; border: 1px solid #234534; border-radius: 6px; padding: 3px 7px; }
+  .recent-note { font-size: 11px; margin-top: 4px; color: #6E8779; }
+  .recent-actions { display: flex; gap: 6px; margin-top: 8px; }
+  .recent-actions button { font-size: 10px; padding: 5px 9px; border-radius: 6px; background: #17301F; border: 1px solid #234534; color: #9FBBAA; cursor: pointer; }
+  .recent-actions button.danger { color: #FF9645; }
+
+  .favorite-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 10px; border-radius: 8px; background: #17301F; border: 1px solid #234534; }
+  .favorite-item + .favorite-item { margin-top: 6px; }
+  .favorite-name { font-size: 12px; font-weight: 600; }
+  .favorite-meta { font-size: 10px; color: #6E8779; margin-top: 2px; }
+  .favorite-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .favorite-actions button { font-size: 10px; padding: 5px 8px; border-radius: 6px; background: #10201A; border: 1px solid #234534; color: #22C17E; cursor: pointer; }
+  .favorite-actions button.danger { color: #FF9645; }
+
+  .athlete-add-form { display: flex; gap: 8px; }
+  .athlete-add-form input { flex: 1; }
+  .athlete-add-form button { flex-shrink: 0; padding: 0 14px; border-radius: 8px; background: #22C17E; color: #052A1B; border: none; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+  .icon { display: inline-block; vertical-align: middle; }
+  .routine-total-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 10px; background: #133220; border: 1px solid #22C17E; margin-bottom: 4px; }
+  .routine-total-bar .label { font-size: 11px; color: #9FBBAA; }
+  .routine-total-bar .value { font-size: 20px; font-weight: 700; font-family: ui-monospace, monospace; color: #3EDB98; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+/* =========================================================
+   阪南大学トランポリンクラブ 記録アプリ(本番版)。
+   Googleスプレッドシート + Apps Script(Webアプリ)をバックエンドに、
+   選手・記録・ルーティーンを共有保存します(アカウント登録不要)。
+   API_URL に Apps Script の /exec URL を設定して使用します。
+   技・難度点データは大阪府体操協会トランポリン審判委員会作成の
+   一覧表(osakajy0066.pdf)から抽出しています。
+   動画アップロード機能は現在「準備中」(未実装)です。
+   ========================================================= */
+
+var COLORS = { accent: "#22C17E", amber: "#FF9645", textFaint: "#6E8779" };
+var TEAM_NAME = "阪南大学トランポリンクラブ";
+var LOGO_DATA_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAcwAAACgCAYAAACBmlwTAAAAAXNSR0IArs4c6QAAAARzQklUCAgICHwIZIgAACAASURBVHhe7Z1fbFXHnccnj3gjbcBIm0iwC9rEPGI/2km22cUrpSgmRErtvMWm2q6AJHYWqsakJgRaO9VCsdMA2q4SO2+1G6kkIBppcZs2jXm0eYzJCnZBaleKSVbK4sfu+V4YM3c8f889595z7/leCaX1nb+fmXu+5zfzm9888OfkI/ghARIgARIgARJwEniAgskZQgIkQAIkQAJ+AhRMPyOmIAESIAESIAFBweQkIAESIAESIIEAAhTMAEhMQgIkQAIkQAIUTM4BEiABEiABEgggQMEMgMQkJEACJEACJEDB5BwgARIgARIggQACFMwASExCAiRAAiRAAhRMzgESIAESIAESCCBAwQyAxCQkQAIkQAIkQMHkHCABEiABEiCBAAIUzABITEICJEACJEACFEzOARIgARIgARIIIEDBDIDEJCRAAiRAAiRAweQcIAESIAESIIEAAhTMAEhMQgIkQAIkQAIUTM4BEiABEiABEgggQMEMgMQkJEACJEACJEDB5BwgARIgARIggQACFMwASExCAiRAAiRAAhRMzgESIAESIAESCCBAwQyAxCQkQAIkQAIkQMHkHCABEiABEiCBAAIUzABITEICJEACJEACFEzOARIgARIgARIIIEDBDIDEJCRAAiRAAiRAweQcIAESIAESIIEAAhTMAEhMQgIkQAIkQAIUTM4BEiABEiABEgggQMEMgMQkJEACJEACJEDB5BwgARIgARIggQACFMwASExCAiRAAiRAAhRMzgESIAESIAESCCBAwQyAxCQkQAIkQAIkQMHkHCABEiABEiCBAAIUzABIapJPPl8UN1b+JAZ7vh2Zs7WSD81MiNP9L4uH2h5srY6xNyRAAiRgIUDBjJwak5fnxKtz74iRXd8Rpwdejszd/Mm/vvONeO7sEfHJ8pL47aEp8dSOrubvFHtAAiRAAgEEKJgBkNQkg9Pj4v0rH1f+BCuzTFbWjZU/JmL5uli6+UWl/288MyiO7dkXSZDJSYAESKA5CVAwI8et68S+NcFA1s6tj4rpwdHkv49FltRcybEUDbH8evWbtYY/u/MJcf7geHN1hK0tDYHl5WVnX9s3tYv2ze2l4cGO1k6AghnJ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";
+var PLATFORMS = ["アルティメイト新台", "アルティメイト", "ユーロ"];
+var MAX_ROUTINE_SKILLS = 20;
+
+/* ---- 技データ(osakajy0066.pdf から抽出、基準点/捻り加点/後方加点の内訳つき) ---- */
+var SKILLS = [{"id": "s1", "family": "forward", "name": "パイククワドロフィスアウト", "numeric": "16 ---1 <", "group": 16, "dd": 2.9, "base": 2.7, "twist": 0.2, "backBonus": null}, {"id": "s2", "family": "backward", "name": "パイクハーフインクワドロフィスアウト", "numeric": "16 1--1 <", "group": 16, "dd": 3.5, "base": 2.8, "twist": 0.4, "backBonus": 0.3}, {"id": "s3", "family": "forward", "name": "タッククワドロフィスアウト", "numeric": "16 ---1 ○", "group": 16, "dd": 2.5, "base": 2.3, "twist": 0.2, "backBonus": null}, {"id": "s4", "family": "backward", "name": "タックハーフインクワドロフィスアウト", "numeric": "16 1--1 ○", "group": 16, "dd": 3.1, "base": 2.4, "twist": 0.4, "backBonus": 0.3}, {"id": "s5", "family": "backward", "name": "タッククワドラプルバック ※参考掲載", "numeric": "16 ----○", "group": 16, "dd": 2.5, "base": 2.2, "twist": null, "backBonus": 0.3}, {"id": "s6", "family": "backward", "name": "タック(トリプル)フル(イン)フル(イン)フル(アウトバック)", "numeric": "12 2 2 2○", "group": 12, "dd": 3.2, "base": 2.2, "twist": 0.8, "backBonus": 0.2}, {"id": "s7", "family": "forward", "name": "パイクフルイントリフィスアウト", "numeric": "12 2 -1<", "group": 12, "dd": 2.4, "base": 2.2, "twist": 0.2, "backBonus": null}, {"id": "s8", "family": "backward", "name": "パイクワンアンドハーフイントリフィスアウト", "numeric": "12 3- 1<", "group": 12, "dd": 2.9, "base": 2.3, "twist": 0.4, "backBonus": 0.2}, {"id": "s9", "family": "forward", "name": "パイクトリフィスルディー(アウト)", "numeric": "12 --3<", "group": 12, "dd": 2.4, "base": 2.2, "twist": 0.2, "backBonus": null}, {"id": "s10", "family": "backward", "name": "パイクハーフイントリフィスルディー(アウト)", "numeric": "12 1- 3<", "group": 12, "dd": 2.9, "base": 2.3, "twist": 0.4, "backBonus": 0.2}, {"id": "s11", "family": "forward", "name": "タックフルイントリフィスアウト", "numeric": "12 2 -1○", "group": 12, "dd": 2.1, "base": 1.9, "twist": 0.2, "backBonus": null}, {"id": "s12", "family": "backward", "name": "タックワンアンドハーフイントリフィスアウト", "numeric": "12 3-1 ○", "group": 12, "dd": 2.6, "base": 2.0, "twist": 0.4, "backBonus": 0.2}, {"id": "s13", "family": "forward", "name": "タックトリフィスルディー(アウト)", "numeric": "12 --3○", "group": 12, "dd": 2.1, "base": 1.9, "twist": 0.2, "backBonus": null}, {"id": "s14", "family": "backward", "name": "タックハーフイントリフィスルディー(アウト)", "numeric": "12 1-3 ○", "group": 12, "dd": 2.6, "base": 2.0, "twist": 0.4, "backBonus": 0.2}, {"id": "s15", "family": "forward", "name": "パイクトリフィスアウト", "numeric": "12 --1<", "group": 12, "dd": 2.0, "base": 2.0, "twist": null, "backBonus": null}, {"id": "s16", "family": "backward", "name": "パイクハーフイントリフィスアウト", "numeric": "12 1-1 <", "group": 12, "dd": 2.3, "base": 2.1, "twist": null, "backBonus": 0.2}, {"id": "s17", "family": "forward", "name": "タックトリフィスアウト", "numeric": "12 --1○", "group": 12, "dd": 1.7, "base": 1.7, "twist": null, "backBonus": null}, {"id": "s18", "family": "backward", "name": "タックハーフイントリフィスアウト", "numeric": "12 1-1 ○", "group": 12, "dd": 2.0, "base": 1.8, "twist": null, "backBonus": 0.2}, {"id": "s19", "family": "backward", "name": "パイクトリプルバック", "numeric": "12 ---<", "group": 12, "dd": 2.1, "base": 1.9, "twist": null, "backBonus": 0.2}, {"id": "s20", "family": "backward", "name": "タックトリプルバック", "numeric": "12 ---○", "group": 12, "dd": 1.8, "base": 1.6, "twist": null, "backBonus": 0.2}, {"id": "s21", "family": "forward", "name": "レイアウト 2-3/4フロント", "numeric": "11 --/", "group": 11, "dd": 1.5, "base": 1.5, "twist": null, "backBonus": null}, {"id": "s22", "family": "backward", "name": "レイアウト ハーフ 2-3/4バック", "numeric": "11 1-/", "group": 11, "dd": 1.7, "base": 1.6, "twist": null, "backBonus": 0.1}, {"id": "s23", "family": "forward", "name": "パイク 2-3/4フロント", "numeric": "11 --<", "group": 11, "dd": 1.5, "base": 1.5, "twist": null, "backBonus": null}, {"id": "s24", "family": "backward", "name": "パイク ハーフ 2-3/4バック", "numeric": "11 1-<", "group": 11, "dd": 1.7, "base": 1.6, "twist": null, "backBonus": 0.1}, {"id": "s25", "family": "forward", "name": "タック 2-3/4フロント", "numeric": "11 --○", "group": 11, "dd": 1.3, "base": 1.3, "twist": null, "backBonus": null}, {"id": "s26", "family": "backward", "name": "タック ハーフ 2-3/4バック", "numeric": "11 1-○", "group": 11, "dd": 1.5, "base": 1.4, "twist": null, "backBonus": 0.1}, {"id": "s27", "family": "forward", "name": "パイクベビーボールアウト", "numeric": "9 -1 <", "group": 9, "dd": 1.4, "base": 1.4, "twist": null, "backBonus": null}, {"id": "s28", "family": "forward", "name": "タックベビーボールアウト", "numeric": "9 -1 ○", "group": 9, "dd": 1.2, "base": 1.2, "twist": null, "backBonus": null}, {"id": "s29", "family": "backward", "name": "(レイアウト)ダブルインフル(アウト)", "numeric": "8 4 2 /", "group": 8, "dd": 2.1, "base": 1.8, "twist": 0.2, "backBonus": 0.1}, {"id": "s30", "family": "forward", "name": "パイクベビー", "numeric": "9 --<", "group": 9, "dd": 1.3, "base": 1.3, "twist": null, "backBonus": null}, {"id": "s31", "family": "backward", "name": "(レイアウト)フルインダブル(アウト)", "numeric": "8 2 4 /", "group": 8, "dd": 2.1, "base": 1.8, "twist": 0.2, "backBonus": 0.1}, {"id": "s32", "family": "forward", "name": "タックベビー", "numeric": "9 --○", "group": 9, "dd": 1.1, "base": 1.1, "twist": null, "backBonus": null}, {"id": "s33", "family": "forward", "name": "レイアウトフルインランディー(アウト)", "numeric": "8 2 5 /", "group": 8, "dd": 2.2, "base": 1.9, "twist": 0.3, "backBonus": null}, {"id": "s34", "family": "backward", "name": "(レイアウト)ダブルインダブル(アウト)", "numeric": "8 4 4 /", "group": 8, "dd": 2.5, "base": 2.0, "twist": 0.4, "backBonus": 0.1}, {"id": "s35", "family": "forward", "name": "パイクフルインランディー(アウト)", "numeric": "8 2 5 <", "group": 8, "dd": 2.2, "base": 1.9, "twist": 0.3, "backBonus": null}, {"id": "s36", "family": "backward", "name": "パイクワンアンドハーフインランディー(アウト)", "numeric": "8 3 5 <", "group": 8, "dd": 2.5, "base": 2.0, "twist": 0.4, "backBonus": 0.1}, {"id": "s37", "family": "forward", "name": "タックフルインランディー(アウト)", "numeric": "8 2 5 ○", "group": 8, "dd": 2.0, "base": 1.7, "twist": 0.3, "backBonus": null}, {"id": "s38", "family": "backward", "name": "タックワンアンドハーフインランディー(アウト)", "numeric": "8 3 5 ○", "group": 8, "dd": 2.3, "base": 1.8, "twist": 0.4, "backBonus": 0.1}, {"id": "s39", "family": "forward", "name": "レイアウトフルインルディー(アウト)", "numeric": "8 2 3 /", "group": 8, "dd": 1.8, "base": 1.7, "twist": 0.1, "backBonus": null}, {"id": "s40", "family": "backward", "name": "(レイアウト)ミラー", "numeric": "8 3 3 /", "group": 8, "dd": 2.1, "base": 1.8, "twist": 0.2, "backBonus": 0.1}, {"id": "s41", "family": "forward", "name": "レイアウトランディー(アウト)", "numeric": "8 -5 /", "group": 8, "dd": 1.8, "base": 1.7, "twist": 0.1, "backBonus": null}, {"id": "s42", "family": "backward", "name": "レイアウトハーフインランディー(アウト)", "numeric": "8 1 5 /", "group": 8, "dd": 2.1, "base": 1.8, "twist": 0.2, "backBonus": 0.1}, {"id": "s43", "family": "forward", "name": "パイクランディー(アウト)", "numeric": "8 -5 <", "group": 8, "dd": 1.8, "base": 1.7, "twist": 0.1, "backBonus": null}, {"id": "s44", "family": "backward", "name": "パイクハーフインランディー(アウト)", "numeric": "8 1 5 <", "group": 8, "dd": 2.1, "base": 1.8, "twist": 0.2, "backBonus": 0.1}, {"id": "s45", "family": "forward", "name": "パイクフルインルディー(アウト)", "numeric": "8 2 3 <", "group": 8, "dd": 1.8, "base": 1.7, "twist": 0.1, "backBonus": null}, {"id": "s46", "family": "backward", "name": "パイクワンアンドハーフインルディー(アウト)", "numeric": "8 3 3 <", "group": 8, "dd": 2.1, "base": 1.8, "twist": 0.2, "backBonus": 0.1}, {"id": "s47", "family": "forward", "name": "タックランディー(アウト)", "numeric": "8 -5 ○", "group": 8, "dd": 1.6, "base": 1.5, "twist": 0.1, "backBonus": null}, {"id": "s48", "family": "backward", "name": "タックハーフインランディー(アウト)", "numeric": "8 1 5 ○", "group": 8, "dd": 1.9, "base": 1.6, "twist": 0.2, "backBonus": 0.1}, {"id": "s49", "family": "forward", "name": "タックフルインルディー(アウト)", "numeric": "8 2 3 ○", "group": 8, "dd": 1.6, "base": 1.5, "twist": 0.1, "backBonus": null}, {"id": "s50", "family": "backward", "name": "タックワンアンドハーフインルディー(アウト)", "numeric": "8 3 3 ○", "group": 8, "dd": 1.9, "base": 1.6, "twist": 0.2, "backBonus": 0.1}, {"id": "s51", "family": "backward", "name": "レイアウトワンアンドハーフインハーフ(アウト)", "numeric": "8 3 1 /", "group": 8, "dd": 1.7, "base": 1.6, "twist": null, "backBonus": 0.1}, {"id": "s52", "family": "forward", "name": "レイアウトフルインバラニー(アウト)", "numeric": "8 2 1 /", "group": 8, "dd": 1.5, "base": 1.5, "twist": null, "backBonus": null}, {"id": "s53", "family": "backward", "name": "レイアウトフル(イン)フル(アウト)", "numeric": "8 2 2 /", "group": 8, "dd": 1.7, "base": 1.6, "twist": null, "backBonus": 0.1}, {"id": "s54", "family": "forward", "name": "レイアアウトルディー(アウト)", "numeric": "8 -3 /", "group": 8, "dd": 1.5, "base": 1.5, "twist": null, "backBonus": null}, {"id": "s55", "family": "backward", "name": "レイアウトハーフインルディー(アウト)", "numeric": "8 1 3 /", "group": 8, "dd": 1.7, "base": 1.6, "twist": null, "backBonus": 0.1}, {"id": "s56", "family": "backward", "name": "パイクワンアンドハーフインハーフ(アウト)", "numeric": "8 3 1 <", "group": 8, "dd": 1.7, "base": 1.6, "twist": null, "backBonus": 0.1}, {"id": "s57", "family": "forward", "name": "パイクフルインバラニー(アウト)", "numeric": "8 2 1 <", "group": 8, "dd": 1.5, "base": 1.5, "twist": null, "backBonus": null}, {"id": "s58", "family": "backward", "name": "パイクフル(イン)フル(アウト) ※参考掲載", "numeric": "8 2 2 <", "group": 8, "dd": 1.7, "base": 1.6, "twist": null, "backBonus": 0.1}, {"id": "s59", "family": "forward", "name": "パイクルディー(アウト)", "numeric": "8 -3 <", "group": 8, "dd": 1.5, "base": 1.5, "twist": null, "backBonus": null}, {"id": "s60", "family": "backward", "name": "パイクハーフインルディー(アウト)", "numeric": "8 1 3 <", "group": 8, "dd": 1.7, "base": 1.6, "twist": null, "backBonus": 0.1}, {"id": "s61", "family": "backward", "name": "タックワンアンドハーフインハーフ(アウト)", "numeric": "8 3 1 ○", "group": 8, "dd": 1.5, "base": 1.4, "twist": null, "backBonus": 0.1}, {"id": "s62", "family": "forward", "name": "タックフルインバラニー(アウト)", "numeric": "8 2 1 ○", "group": 8, "dd": 1.3, "base": 1.3, "twist": null, "backBonus": null}, {"id": "s63", "family": "backward", "name": "タックフル(イン)フル(アウト)", "numeric": "8 2 2 ○", "group": 8, "dd": 1.5, "base": 1.4, "twist": null, "backBonus": 0.1}, {"id": "s64", "family": "forward", "name": "タックルディー(アウト)", "numeric": "8 -3 ○", "group": 8, "dd": 1.3, "base": 1.3, "twist": null, "backBonus": null}, {"id": "s65", "family": "backward", "name": "タックハーフインルディー(アウト)", "numeric": "8 1 3 ○", "group": 8, "dd": 1.5, "base": 1.4, "twist": null, "backBonus": 0.1}, {"id": "s66", "family": "forward", "name": "レイアウトバラニーインバック", "numeric": "8 1 -/", "group": 8, "dd": 1.3, "base": 1.3, "twist": null, "backBonus": null}, {"id": "s67", "family": "backward", "name": "レイアウトフルインバック", "numeric": "8 2 -/", "group": 8, "dd": 1.5, "base": 1.4, "twist": null, "backBonus": 0.1}, {"id": "s68", "family": "forward", "name": "レイアウト(ダブル)アウト", "numeric": "8 - 1/", "group": 8, "dd": 1.3, "base": 1.3, "twist": null, "backBonus": null}, {"id": "s69", "family": "backward", "name": "レイアウトハーフインハーフ(アウト)", "numeric": "8 1 1 /", "group": 8, "dd": 1.5, "base": 1.4, "twist": null, "backBonus": 0.1}, {"id": "s70", "family": "backward", "name": "レイアウトフルアウト(バック)", "numeric": "8 -2 /", "group": 8, "dd": 1.5, "base": 1.4, "twist": null, "backBonus": 0.1}, {"id": "s71", "family": "forward", "name": "パイクバラニーインバック", "numeric": "8 1 -<", "group": 8, "dd": 1.3, "base": 1.3, "twist": null, "backBonus": null}, {"id": "s72", "family": "backward", "name": "パイクフルインバック", "numeric": "8 2 -<", "group": 8, "dd": 1.5, "base": 1.4, "twist": null, "backBonus": 0.1}, {"id": "s73", "family": "forward", "name": "パイク(ダブル)アウト", "numeric": "8 - 1<", "group": 8, "dd": 1.3, "base": 1.3, "twist": null, "backBonus": null}, {"id": "s74", "family": "backward", "name": "パイクハーフインハーフ(アウト)", "numeric": "8 1 1 <", "group": 8, "dd": 1.5, "base": 1.4, "twist": null, "backBonus": 0.1}, {"id": "s75", "family": "backward", "name": "パイクフルアウト(バック)", "numeric": "8 -2 <", "group": 8, "dd": 1.5, "base": 1.4, "twist": null, "backBonus": 0.1}, {"id": "s76", "family": "forward", "name": "タックバラニーインバック", "numeric": "8 1 -○", "group": 8, "dd": 1.1, "base": 1.1, "twist": null, "backBonus": null}, {"id": "s77", "family": "backward", "name": "タックフルインバック", "numeric": "8 2 -○", "group": 8, "dd": 1.3, "base": 1.2, "twist": null, "backBonus": 0.1}, {"id": "s78", "family": "forward", "name": "タック(ダブル)アウト", "numeric": "8 -1 ○", "group": 8, "dd": 1.1, "base": 1.1, "twist": null, "backBonus": null}, {"id": "s79", "family": "backward", "name": "タックハーフインハーフ(アウト)", "numeric": "8 1 1 ○", "group": 8, "dd": 1.3, "base": 1.2, "twist": null, "backBonus": 0.1}, {"id": "s80", "family": "backward", "name": "タックフルアウト(バック)", "numeric": "8 -2 ○", "group": 8, "dd": 1.3, "base": 1.2, "twist": null, "backBonus": 0.1}, {"id": "s81", "family": "forward", "name": "レイアウト 1-3/4フロント", "numeric": "7 --/", "group": 7, "dd": 0.9, "base": 0.9, "twist": null, "backBonus": null}, {"id": "s82", "family": "backward", "name": "レイアウトダブル(バック)", "numeric": "8 --/", "group": 8, "dd": 1.3, "base": 1.2, "twist": null, "backBonus": 0.1}, {"id": "s83", "family": "forward", "name": "パイク 1-3/4フロント", "numeric": "7 --<", "group": 7, "dd": 0.9, "base": 0.9, "twist": null, "backBonus": null}, {"id": "s84", "family": "backward", "name": "パイクダブル(バック)", "numeric": "8 --<", "group": 8, "dd": 1.3, "base": 1.2, "twist": null, "backBonus": 0.1}, {"id": "s85", "family": "forward", "name": "タック 1-3/4フロント", "numeric": "7 --○", "group": 7, "dd": 0.8, "base": 0.8, "twist": null, "backBonus": null}, {"id": "s86", "family": "backward", "name": "タックダブル(バック)", "numeric": "8 --○", "group": 8, "dd": 1.1, "base": 1.0, "twist": null, "backBonus": 0.1}, {"id": "s87", "family": "forward", "name": "(レイアウト)ランディーボールアウト", "numeric": "5 5 /", "group": 5, "dd": 1.1, "base": 1.1, "twist": null, "backBonus": null}, {"id": "s88", "family": "backward", "name": "レイアウト 1-3/4バック", "numeric": "7 --/", "group": 7, "dd": 0.9, "base": 0.9, "twist": null, "backBonus": null}, {"id": "s89", "family": "forward", "name": "(レイアウト)ルディーボールアウト(セロロット)", "numeric": "5 3 /", "group": 5, "dd": 0.9, "base": 0.9, "twist": null, "backBonus": null}, {"id": "s90", "family": "backward", "name": "パイク 1-3/4バック", "numeric": "7 --<", "group": 7, "dd": 0.9, "base": 0.9, "twist": null, "backBonus": null}, {"id": "s91", "family": "forward", "name": "(パイク)ルディーボールアウト(セロロット)", "numeric": "5 3 <", "group": 5, "dd": 0.9, "base": 0.9, "twist": null, "backBonus": null}, {"id": "s92", "family": "backward", "name": "タック 1-3/4バック", "numeric": "7 --○", "group": 7, "dd": 0.8, "base": 0.8, "twist": null, "backBonus": null}, {"id": "s93", "family": "forward", "name": "(タック)ルディーボールアウト(セロロット)", "numeric": "5 3 ○", "group": 5, "dd": 0.9, "base": 0.9, "twist": null, "backBonus": null}, {"id": "s94", "family": "forward", "name": "(レイアウト)バラニーボールアウト", "numeric": "5 1 /", "group": 5, "dd": 0.7, "base": 0.7, "twist": null, "backBonus": null}, {"id": "s95", "family": "backward", "name": "レイアウトコディー&レイアウト 1-1/4バック", "numeric": "5 - /", "group": 5, "dd": 0.7, "base": 0.7, "twist": null, "backBonus": null}, {"id": "s96", "family": "forward", "name": "(パイク)バラニーボールアウト", "numeric": "5 1 <", "group": 5, "dd": 0.7, "base": 0.7, "twist": null, "backBonus": null}, {"id": "s97", "family": "backward", "name": "パイクコディー & パイク 1-1/4バック", "numeric": "5 - <", "group": 5, "dd": 0.7, "base": 0.7, "twist": null, "backBonus": null}, {"id": "s98", "family": "forward", "name": "(タック)バラニーボールアウト", "numeric": "5 1 ○", "group": 5, "dd": 0.7, "base": 0.7, "twist": null, "backBonus": null}, {"id": "s99", "family": "backward", "name": "タックコディー & タック 1-1/4バック", "numeric": "5 - ○", "group": 5, "dd": 0.6, "base": 0.6, "twist": null, "backBonus": null}, {"id": "s100", "family": "backward", "name": "クワドラプルツイスト", "numeric": "4 8 /", "group": 4, "dd": 1.3, "base": 1.3, "twist": null, "backBonus": null}, {"id": "s101", "family": "forward", "name": "(レイアウト)ランドルフ", "numeric": "4 5 /", "group": 4, "dd": 1.0, "base": 1.0, "twist": null, "backBonus": null}, {"id": "s102", "family": "backward", "name": "トリプルツイスト", "numeric": "4 6 /", "group": 4, "dd": 1.1, "base": 1.1, "twist": null, "backBonus": null}, {"id": "s103", "family": "forward", "name": "(レイアウト)ルドルフ", "numeric": "4 3 /", "group": 4, "dd": 0.8, "base": 0.8, "twist": null, "backBonus": null}, {"id": "s104", "family": "backward", "name": "ダブルツイスト", "numeric": "4 4 /", "group": 4, "dd": 0.9, "base": 0.9, "twist": null, "backBonus": null}, {"id": "s105", "family": "forward", "name": "レイアウトバラニー", "numeric": "4 1 /", "group": 4, "dd": 0.6, "base": 0.6, "twist": null, "backBonus": null}, {"id": "s106", "family": "backward", "name": "フルツイスト", "numeric": "4 2 /", "group": 4, "dd": 0.7, "base": 0.7, "twist": null, "backBonus": null}, {"id": "s107", "family": "forward", "name": "パイクバラニー", "numeric": "4 1 <", "group": 4, "dd": 0.6, "base": 0.6, "twist": null, "backBonus": null}, {"id": "s108", "family": "forward", "name": "タックバラニー", "numeric": "4 1 ○", "group": 4, "dd": 0.6, "base": 0.6, "twist": null, "backBonus": null}, {"id": "s109", "family": "forward", "name": "レイアウト前宙", "numeric": "4 - /", "group": 4, "dd": 0.6, "base": 0.6, "twist": null, "backBonus": null}, {"id": "s110", "family": "backward", "name": "レイアウトバック", "numeric": "4 - /", "group": 4, "dd": 0.6, "base": 0.6, "twist": null, "backBonus": null}, {"id": "s111", "family": "forward", "name": "パイク前宙", "numeric": "4 - <", "group": 4, "dd": 0.6, "base": 0.6, "twist": null, "backBonus": null}, {"id": "s112", "family": "backward", "name": "パイクバック", "numeric": "4 - <", "group": 4, "dd": 0.6, "base": 0.6, "twist": null, "backBonus": null}, {"id": "s113", "family": "forward", "name": "タック前宙", "numeric": "4 - ○", "group": 4, "dd": 0.5, "base": 0.5, "twist": null, "backBonus": null}, {"id": "s114", "family": "backward", "name": "タックバック", "numeric": "4 - ○", "group": 4, "dd": 0.5, "base": 0.5, "twist": null, "backBonus": null}, {"id": "s115", "family": "forward", "name": "パイク前宙-シート", "numeric": "4 - <", "group": 4, "dd": 0.6, "base": 0.6, "twist": null, "backBonus": null}, {"id": "s116", "family": "forward", "name": "タック前宙-シート", "numeric": "4 - ○", "group": 4, "dd": 0.5, "base": 0.5, "twist": null, "backBonus": null}, {"id": "s117", "family": "forward", "name": "(レイアウト)3/4フロント", "numeric": "3 - /", "group": 3, "dd": 0.3, "base": 0.3, "twist": null, "backBonus": null}, {"id": "s118", "family": "backward", "name": "レイアウト3/4バック&レイアウトプルオーバー(バックオーバー)", "numeric": "3 - /", "group": 3, "dd": 0.3, "base": 0.3, "twist": null, "backBonus": null}, {"id": "s119", "family": "forward", "name": "タック四つんばい前宙-立つ", "numeric": "3 - ○", "group": 3, "dd": 0.3, "base": 0.3, "twist": null, "backBonus": null}, {"id": "s120", "family": "backward", "name": "パイク4/3バック&パイクプルオーバー(バックオーバー)", "numeric": "3 - <", "group": 3, "dd": 0.3, "base": 0.3, "twist": null, "backBonus": null}, {"id": "s121", "family": "forward", "name": "タック四つんばい前宙-シート", "numeric": "3 - ○", "group": 3, "dd": 0.3, "base": 0.3, "twist": null, "backBonus": null}, {"id": "s122", "family": "backward", "name": "タック4/3バック&タックプルオーバー(バックオーバー)", "numeric": "3 - ○", "group": 3, "dd": 0.3, "base": 0.3, "twist": null, "backBonus": null}, {"id": "s123", "family": "forward", "name": "(レイアウト)フルフロント", "numeric": "1 2 /", "group": 1, "dd": 0.3, "base": 0.3, "twist": null, "backBonus": null}, {"id": "s124", "family": "backward", "name": "(レイアウト)フルバック", "numeric": "1 2 /", "group": 1, "dd": 0.3, "base": 0.3, "twist": null, "backBonus": null}, {"id": "s125", "family": "forward", "name": "(レイアウト)ハーフバック", "numeric": "1 1 /", "group": 1, "dd": 0.2, "base": 0.2, "twist": null, "backBonus": null}, {"id": "s126", "family": "backward", "name": "(レイアウト)ハーフフロント", "numeric": "1 1 /", "group": 1, "dd": 0.2, "base": 0.2, "twist": null, "backBonus": null}, {"id": "s127", "family": "forward", "name": "レイアウトフロントドロップ(腹落ち)", "numeric": "1 - /", "group": 1, "dd": 0.1, "base": 0.1, "twist": null, "backBonus": null}, {"id": "s128", "family": "backward", "name": "レイアウトバックドロップ(背落ち)", "numeric": "1 - /", "group": 1, "dd": 0.1, "base": 0.1, "twist": null, "backBonus": null}, {"id": "s129", "family": "forward", "name": "パイクフロントドロップ(腹落ち)", "numeric": "1 - <", "group": 1, "dd": 0.1, "base": 0.1, "twist": null, "backBonus": null}, {"id": "s130", "family": "backward", "name": "パイクバックドロップ(背落ち)", "numeric": "1 - <", "group": 1, "dd": 0.1, "base": 0.1, "twist": null, "backBonus": null}, {"id": "s131", "family": "forward", "name": "タックフロントドロップ(腹落ち)", "numeric": "1 - 〇", "group": 1, "dd": 0.1, "base": 0.1, "twist": null, "backBonus": null}, {"id": "s132", "family": "backward", "name": "タックバックドロップ(背落ち)", "numeric": "1 - 〇", "group": 1, "dd": 0.1, "base": 0.1, "twist": null, "backBonus": null}, {"id": "s133", "family": "forward", "name": "パイクバウンス(閉脚)", "numeric": "<", "group": 0, "dd": 0.1, "base": 0.1, "twist": null, "backBonus": null}, {"id": "s134", "family": "backward", "name": "ピルエット フルシート ローラー 他", "numeric": "", "group": 0, "dd": 0.2, "base": 0.2, "twist": null, "backBonus": null}, {"id": "s135", "family": "forward", "name": "ストラドルバウンス(開脚)", "numeric": "V", "group": 0, "dd": 0.1, "base": 0.1, "twist": null, "backBonus": null}, {"id": "s136", "family": "backward", "name": "ハーフシート スイブル ハーフスタンド 他", "numeric": "", "group": 0, "dd": 0.1, "base": 0.1, "twist": null, "backBonus": null}, {"id": "s137", "family": "forward", "name": "タックバウンス(抱え)", "numeric": "○", "group": 0, "dd": 0.1, "base": 0.1, "twist": null, "backBonus": null}, {"id": "s138", "family": "backward", "name": "シート 他難度点が無かった技", "numeric": "", "group": 0, "dd": 0.1, "base": 0.1, "twist": null, "backBonus": null}, {"id": "s139", "family": "forward", "name": "ストレートジャンプ", "numeric": "", "group": -1, "dd": 0.0, "base": 0.0, "twist": null, "backBonus": null}, {"id": "s140", "family": "forward", "name": "手決めジャンプ", "numeric": "", "group": -1, "dd": 0.0, "base": 0.0, "twist": null, "backBonus": null}, {"id": "s141", "family": "forward", "name": "気を付けジャンプ", "numeric": "", "group": -1, "dd": 0.0, "base": 0.0, "twist": null, "backBonus": null}, {"id": "s142", "family": "backward", "name": "ストレートジャンプ", "numeric": "", "group": -1, "dd": 0.0, "base": 0.0, "twist": null, "backBonus": null}, {"id": "s143", "family": "backward", "name": "手決めジャンプ", "numeric": "", "group": -1, "dd": 0.0, "base": 0.0, "twist": null, "backBonus": null}, {"id": "s144", "family": "backward", "name": "気を付けジャンプ", "numeric": "", "group": -1, "dd": 0.0, "base": 0.0, "twist": null, "backBonus": null}];
+
+var skillIndex = {};
+SKILLS.forEach(function (s) { skillIndex[s.id] = s; });
+function skillById(id) { return skillIndex[id] || null; }
+function firstSkillId(family) {
+  var f = SKILLS.filter(function (s) { return s.family === family; });
+  if (!f.length) return null;
+  f = f.slice().sort(function (a, b) {
+    if (a.group !== b.group) return a.group - b.group;
+    return (a.dd || 0) - (b.dd || 0);
+  });
+  return f[0].id;
+}
+function fmtDD(n) { return (n === null || n === undefined) ? "-" : n.toFixed(1); }
+/* group はヌーメリック先頭の数字(4=1回宙、8=2回宙…4刻みで1回転分)。-1=無回転の基礎ジャンプ、0=基本姿勢・バウンス系。 */
+function groupLabel(g) {
+  if (g === -1) return "基礎ジャンプ(無回転)";
+  if (g === 0) return "基本姿勢・バウンス系";
+  var saults = g / 4;
+  var whole = Math.floor(saults);
+  var quarters = Math.round((saults - whole) * 4);
+  var fracLabel = quarters === 1 ? "1/4" : quarters === 2 ? "1/2" : quarters === 3 ? "3/4" : "";
+  if (whole === 0) return fracLabel + "回宙";
+  if (quarters === 0) return whole + "回宙";
+  return whole + "+" + fracLabel + "回宙";
+}
+
+function buildSkillOptionsHtml(family, selectedId) {
+  var list = SKILLS.filter(function (s) { return s.family === family; });
+  var groups = {}, order = [];
+  list.forEach(function (s) {
+    if (!(s.group in groups)) { groups[s.group] = []; order.push(s.group); }
+    groups[s.group].push(s);
+  });
+  order.sort(function (a, b) { return a - b; }); /* 易しい(回転が少ない)技から表示 */
+  return order.map(function (g) {
+    var items = groups[g].slice().sort(function (a, b) { return (a.dd || 0) - (b.dd || 0); }); /* 各グループ内も難度点が低い順 */
+    var opts = items.map(function (s) {
+      return '<option value="' + s.id + '"' + (s.id === selectedId ? " selected" : "") + '>' +
+        escHtml(s.name) + (s.numeric ? " (" + escHtml(s.numeric) + ")" : "") +
+        "</option>";
+    }).join("");
+    return '<optgroup label="' + escAttr(groupLabel(g)) + '">' + opts + "</optgroup>";
+  }).join("");
+}
+
+function escHtml(s) {
+  if (s === null || s === undefined) return "";
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function escAttr(s) { return escHtml(s).replace(/"/g, "&quot;"); }
+
+function iconSvg(inner, size, color) {
+  return '<svg class="icon" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="' + (color || "#EAF3EC") + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + inner + "</svg>";
+}
+function iconPlus(size, color) { return iconSvg('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>', size, color); }
+function iconMinus(size, color) { return iconSvg('<line x1="5" y1="12" x2="19" y2="12"/>', size, color); }
+function iconChevron(size, color) { return iconSvg('<polyline points="6 9 12 15 18 9"/>', size, color); }
+function iconChevronLeft(size, color) { return iconSvg('<polyline points="15 18 9 12 15 6"/>', size, color); }
+function iconPlay(size, color) { return iconSvg('<polygon points="6 3 20 12 6 21 6 3"/>', size, color); }
+function iconCheck(size, color) { return iconSvg('<polyline points="20 6 9 17 4 12"/>', size, color); }
+function iconStar(size, color) { return iconSvg('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>', size, color); }
+
+/* ---- 選手ロースター(実データはGoogleスプレッドシートから読み込む。初期は空) ---- */
+// セッションをまたいでも衝突しない一意ID(バックエンド保存用)
+function uid(prefix) {
+  return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+function nextAthleteId() { return uid("ath_"); }
+var ATHLETES = [];
+
+function nextEntryId() { return uid("e_"); }
+var ENTRIES = [];
+
+function nextFavId() { return uid("f_"); }
+var FAVORITES = [];
+
+/* ================= バックエンド(Googleスプレッドシート / Apps Script)接続 ================= */
+var API_URL = "https://script.google.com/macros/s/AKfycbwatMAHr8BWhnZqEKjDfQw-w0cCa3EUvqzEt5VH-roKYWjr0IaVarYx1vuidPl2P9Dn/exec";
+var BACKEND_READY = false;     // 初回ロード完了フラグ(未完了なら読み込み中画面)
+var backendError = null;       // 直近の通信エラーメッセージ(あれば画面上部に表示)
+
+// doGet で全データを取得してローカル配列に反映する
+function loadAll() {
+  fetch(API_URL, { method: "GET" })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data && data.status === "error") throw new Error(data.message || "load error");
+      ATHLETES = (data.athletes || []).slice().sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
+      FAVORITES = (data.favorites || []).slice().sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
+      ENTRIES = (data.entries || []).slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+      BACKEND_READY = true;
+      backendError = null;
+      render();
+    })
+    .catch(function (err) {
+      backendError = "データの読み込みに失敗しました。通信環境を確認して再読み込みしてください。";
+      BACKEND_READY = true; // エラー表示付きで画面は出す
+      render();
+      console.error("loadAll failed", err);
+    });
+}
+
+// doPost。CORSプリフライトを避けるため Content-Type は text/plain(中身はJSON)。
+function postToBackend(payload) {
+  return fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload)
+  }).then(function (r) { return r.json(); }).then(function (res) {
+    if (res && res.status === "error") throw new Error(res.message || "post error");
+    return res;
+  });
+}
+
+// 楽観的更新の背景同期(先にローカルへ反映してから送信。失敗時はメッセージ表示)
+function syncToBackend(payload, label) {
+  postToBackend(payload).catch(function (err) {
+    backendError = (label || "保存") + "の同期に失敗しました。時間をおいて再度お試しください。";
+    console.error("sync failed:", label, err);
+    render();
+  });
+}
+
+
+/* ---- app state ---- */
+function emptySingleDraft() {
+  return { family: "forward", skillId: firstSkillId("forward"), success: "", fail: "", kakari: false, kakariTarget: null, note: "", videoSuccessName: null, videoSuccessUrl: null, videoFailName: null, videoFailUrl: null };
+}
+function emptyAirtimeDraft() {
+  return { airTime: "", airTimeReps: "10" };
+}
+function emptyRoutineSkillRow() {
+  return { family: "forward", skillId: firstSkillId("forward") };
+}
+function emptyRoutineDraft() {
+  return { name: "", skills: [emptyRoutineSkillRow()] };
+}
+function emptyRoutineExecDraft() {
+  return { favoriteId: "", airTime: "", result: null, note: "", videoSuccessName: null, videoSuccessUrl: null, videoFailName: null, videoFailUrl: null };
+}
+
+var S = {
+  tab: "record",
+  athleteId: null,
+  date: todayStr(),
+  platform: PLATFORMS[0],
+  mode: "single",
+  single: emptySingleDraft(),
+  routine: emptyRoutineDraft(),
+  routineExec: emptyRoutineExecDraft(),
+  tScoreMode: "stepped",
+  tScoreFixedCoef: "",
+  airtime: emptyAirtimeDraft(),
+  addingAthlete: false,
+  newAthleteName: "",
+  savingFlash: false,
+  airtimeSavingFlash: false,
+  routineExecSavingFlash: false,
+  routineDefSavingFlash: false,
+  editingEntryId: null,
+  confirmDeleteId: null,
+  confirmDeleteFavId: null,
+  videoModalUrl: null,
+  videoModalCaption: "",
+  jumpHistoryModal: null,
+  routineDetailModal: null,
+  routineDetailPeriod: "day",
+  routineDetailBin: null,
+  singleDetailModal: null,
+  singleDetailPeriod: "day",
+  singleDetailBin: null,
+  platformDetailModal: null,
+  dashScope: "team",
+  dashRankMode: "total",
+  dashTechMode: "count",
+};
+
+function todayStr() {
+  // 端末のタイムゾーン設定に依存せず、常に日本時間(JST=UTC+9)の暦日を返す。
+  // (toISOString() はUTC基準なので、JST早朝は前日になってしまう問題を+9hシフトで回避)
+  return new Date(Date.now() + 9 * 60 * 60000).toISOString().slice(0, 10);
+}
+
+/* ---- 日付の自動リセット(案1) ----
+   バックグラウンド復帰時に「日付が過去のまま」かつ「その日付でまだ何も保存していない」なら
+   自動で今日の日付に戻す。既にその日付で記録を保存済みなら(まとめ入力中とみなし)手を出さない。 */
+var enteredDatesThisSession = {};
+function markDateEntered(dateStr) { enteredDatesThisSession[dateStr] = true; }
+function checkDateOnResume() {
+  var today = todayStr();
+  if (S.date < today && !enteredDatesThisSession[S.date]) {
+    S.date = today;
+    render();
+  }
+}
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState === "visible") checkDateOnResume();
+});
+
+/* ---- ナビゲーション ---- */
+function selectTab(tab) {
+  S.tab = tab;
+  S.editingEntryId = null;
+  S.confirmDeleteId = null;
+  if (tab === "dashboard" && S.athleteId) { S.dashScope = S.athleteId; }
+  render();
+}
+function selectAthlete(id) { S.athleteId = id || null; render(); }
+function setDate(v) { S.date = v; render(); }
+function selectPlatform(p) { S.platform = p; render(); }
+function selectMode(m) { S.mode = m; render(); }
+
+function openAddAthlete() { S.addingAthlete = true; S.newAthleteName = ""; render(); }
+function cancelAddAthlete() { S.addingAthlete = false; render(); }
+function setNewAthleteName(v) { S.newAthleteName = v; }
+function confirmAddAthlete() {
+  var name = (S.newAthleteName || "").trim();
+  if (!name) return;
+  var id = nextAthleteId();
+  var createdAt = Date.now();
+  ATHLETES.push({ id: id, name: name, createdAt: createdAt });
+  S.addingAthlete = false;
+  S.athleteId = id;
+  render();
+  syncToBackend({ type: "addAthlete", id: id, name: name, createdAt: createdAt }, "選手の追加");
+}
+
+/* ---- 単発フォーム ---- */
+function setSingleFamily(fam) {
+  S.single.family = fam;
+  S.single.skillId = firstSkillId(fam);
+  render();
+}
+function setSingleSkill(id) { S.single.skillId = id; render(); }
+function toggleSingleKakari() {
+  S.single.kakari = !S.single.kakari;
+  if (!S.single.kakari) S.single.kakariTarget = null;
+  render();
+}
+function setSingleKakariTarget(id) { S.single.kakariTarget = id || null; render(); }
+function setSingleNote(v) { S.single.note = v; }
+function setSingleSuccess(v) { S.single.success = v; render(); }
+function setSingleFail(v) { S.single.fail = v; render(); }
+
+function singleCountValid() {
+  var s = S.single.success, f = S.single.fail;
+  return (s !== "" && Number(s) >= 0) || (f !== "" && Number(f) >= 0);
+}
+
+function saveSingleEntry() {
+  if (!S.athleteId || !S.single.skillId || !singleCountValid()) return;
+  var skill = skillById(S.single.skillId);
+  var entry = {
+    id: nextEntryId(),
+    athleteId: S.athleteId,
+    date: S.date,
+    platform: S.platform,
+    mode: "single",
+    skillId: S.single.skillId,
+    success: Number(S.single.success) || 0,
+    fail: Number(S.single.fail) || 0,
+    kakari: !!S.single.kakari,
+    kakariTarget: S.single.kakari ? (S.single.kakariTarget || null) : null,
+    note: (S.single.note || "").trim(),
+    totalDD: skill ? skill.dd : 0,
+    videoSuccessName: S.single.videoSuccessName || null,
+    videoSuccessUrl: S.single.videoSuccessUrl || null,
+    videoFailName: S.single.videoFailName || null,
+    videoFailUrl: S.single.videoFailUrl || null,
+    createdAt: Date.now(),
+  };
+  ENTRIES.unshift(entry);
+  markDateEntered(S.date);
+  syncToBackend({ type: "saveEntry", entry: entry }, "記録");
+  S.single = emptySingleDraft();
+  S.savingFlash = true;
+  render();
+  setTimeout(function () { S.savingFlash = false; render(); }, 900);
+}
+
+/* ---- タイム計測(単独記録・単発タブ内の別カード) ---- */
+function setAirtimeTime(v) { S.airtime.airTime = v; render(); }
+function setAirtimeReps(v) { S.airtime.airTimeReps = v; render(); }
+
+function airtimeValid() {
+  var t = S.airtime.airTime;
+  return t !== "" && Number(t) > 0;
+}
+
+function saveAirtimeEntry() {
+  if (!S.athleteId || !airtimeValid()) return;
+  var entry = {
+    id: nextEntryId(),
+    athleteId: S.athleteId,
+    date: S.date,
+    platform: S.platform,
+    mode: "airtime",
+    airTime: Number(S.airtime.airTime),
+    airTimeReps: S.airtime.airTimeReps !== "" ? Number(S.airtime.airTimeReps) : null,
+    createdAt: Date.now(),
+  };
+  ENTRIES.unshift(entry);
+  markDateEntered(S.date);
+  syncToBackend({ type: "saveEntry", entry: entry }, "記録");
+  S.airtime = emptyAirtimeDraft();
+  S.airtimeSavingFlash = true;
+  render();
+  setTimeout(function () { S.airtimeSavingFlash = false; render(); }, 900);
+}
+
+/* ---- ルーティーンフォーム ---- */
+function addRoutineSkillRow() {
+  if (S.routine.skills.length >= MAX_ROUTINE_SKILLS) return;
+  S.routine.skills.push(emptyRoutineSkillRow());
+  render();
+}
+function removeRoutineSkillRow(idx) {
+  if (S.routine.skills.length <= 1) return;
+  S.routine.skills.splice(idx, 1);
+  render();
+}
+function setRoutineSkillFamily(idx, fam) {
+  S.routine.skills[idx].family = fam;
+  S.routine.skills[idx].skillId = firstSkillId(fam);
+  render();
+}
+function setRoutineSkillId(idx, id) { S.routine.skills[idx].skillId = id; render(); }
+function setRoutineName(v) { S.routine.name = v; render(); }
+function setRoutineExecFavorite(id) { S.routineExec.favoriteId = id; render(); }
+function setRoutineExecAirTime(v) { S.routineExec.airTime = v; render(); }
+// もう一度同じボタンをタップすると選択解除(未選択に戻す)できるトグル式
+function setRoutineExecResult(v) { S.routineExec.result = (S.routineExec.result === v) ? null : v; render(); }
+function setRoutineExecNote(v) { S.routineExec.note = v; render(); }
+
+// ---- Tスコア計算(草加市トランポリン協会「Time/Score Converter」https://1040tramp.com/score/ の計算式を採用) ----
+// FIGルール上は時間点(T)の換算式は存在せず滞空時間をそのまま得点とするだけだが(§17.2.1等)、
+// このアプリでは草加市トランポリン協会が実際の大会運営(HDTS/VERIFLITE計測不備時の代替)で使っている
+// 「Tスコア = ストップウォッチ計測タイム(秒) × 係数」という実務上の計算式をそのまま採用する。
+// 係数の決め方は4モードから選択できる(既定は区分表=STEPPED、サイトも「公式運用に最も近い」としている):
+//   ・区分表(STEPPED)   … 公式係数表を0.5秒刻みの階段状に適用。区分判定は「前の値 < SW ≦ 区分値」。
+//                          9秒以下は0.735固定、20秒超は0.845で頭打ち。
+//   ・連続式(LINEAR)    … 係数 = 0.735 + (SW − 9) × 0.01 という連続関数。区分の境界での不公平を避ける。
+//   ・実測最適(DATA-FIT) … 係数 = 0.011466 × SW + 0.625531。実測139件からの回帰式(R²=0.70)。
+//   ・固定(FIXED)       … 運用者が指定した係数をどのタイムにも一律適用。
+// タイム・Tスコアともに小数第3位以降は切り捨て(四捨五入ではない)— サイトの「計算ルール」に明記された仕様。
+var STEPPED_COEF_TABLE = [
+  { upTo: 9.0, label: "～9秒", coef: 0.735 },
+  { upTo: 9.5, label: "～9.5秒", coef: 0.740 },
+  { upTo: 10.0, label: "～10秒", coef: 0.745 },
+  { upTo: 10.5, label: "～10.5秒", coef: 0.750 },
+  { upTo: 11.0, label: "～11秒", coef: 0.755 },
+  { upTo: 11.5, label: "～11.5秒", coef: 0.760 },
+  { upTo: 12.0, label: "～12秒", coef: 0.765 },
+  { upTo: 12.5, label: "～12.5秒", coef: 0.770 },
+  { upTo: 13.0, label: "～13秒", coef: 0.775 },
+  { upTo: 13.5, label: "～13.5秒", coef: 0.780 },
+  { upTo: 14.0, label: "～14秒", coef: 0.785 },
+  { upTo: 14.5, label: "～14.5秒", coef: 0.790 },
+  { upTo: 15.0, label: "～15秒", coef: 0.795 },
+  { upTo: 15.5, label: "～15.5秒", coef: 0.800 },
+  { upTo: 16.0, label: "～16秒", coef: 0.805 },
+  { upTo: 16.5, label: "～16.5秒", coef: 0.810 },
+  { upTo: 17.0, label: "～17秒", coef: 0.815 },
+  { upTo: 17.5, label: "～17.5秒", coef: 0.820 },
+  { upTo: 18.0, label: "～18秒", coef: 0.825 },
+  { upTo: 18.5, label: "～18.5秒", coef: 0.830 },
+  { upTo: 19.0, label: "～19秒", coef: 0.835 },
+  { upTo: 19.5, label: "～19.5秒", coef: 0.840 },
+  { upTo: 20.0, label: "～20秒", coef: 0.845 }
+];
+// 小数第3位以降を切り捨て(四捨五入ではない)。浮動小数点誤差を避けるため微小値を足してからfloorする。
+function truncate2(n) {
+  return Math.floor(n * 100 + 1e-9) / 100;
+}
+function steppedLookup(sw) {
+  for (var i = 0; i < STEPPED_COEF_TABLE.length; i++) {
+    if (sw <= STEPPED_COEF_TABLE[i].upTo) return { coef: STEPPED_COEF_TABLE[i].coef, category: STEPPED_COEF_TABLE[i].label };
+  }
+  return { coef: 0.845, category: "上限" }; // 20秒超は頭打ち
+}
+// タイム・モードからTスコアの内訳({sw, coef, category, score})を計算する。入力が空/無効ならnull。
+function computeTScore(v) {
+  if (v === "" || v === null || v === undefined) return null;
+  var n = Number(v);
+  if (isNaN(n) || n < 0) return null;
+  var sw = truncate2(n);
+  var mode = S.tScoreMode || "stepped";
+  var coef, category;
+  if (mode === "linear") {
+    coef = 0.735 + (sw - 9) * 0.01;
+    category = "連続式";
+  } else if (mode === "datafit") {
+    coef = 0.011466 * sw + 0.625531;
+    category = "実測最適";
+  } else if (mode === "fixed") {
+    var fc = Number(S.tScoreFixedCoef);
+    if (S.tScoreFixedCoef === "" || S.tScoreFixedCoef === null || S.tScoreFixedCoef === undefined || isNaN(fc)) return null;
+    coef = fc;
+    category = "固定係数";
+  } else {
+    var looked = steppedLookup(sw);
+    coef = looked.coef;
+    category = looked.category;
+  }
+  return { sw: sw, coef: coef, category: category, score: truncate2(sw * coef) };
+}
+function tScoreFor(v) {
+  var r = computeTScore(v);
+  return r ? r.score : null;
+}
+function setTScoreMode(mode) { S.tScoreMode = mode; render(); }
+function setTScoreFixedCoef(v) { S.tScoreFixedCoef = v; render(); }
+function routineTotalDD(skillsArr) {
+  return skillsArr.reduce(function (sum, row) {
+    var sk = skillById(row.skillId);
+    return sum + (sk && sk.dd ? sk.dd : 0);
+  }, 0);
+}
+
+// ---- ルーティーンの「登録」(技構成を名前付きで登録するカード。実施記録とは完全に独立) ----
+function routineDefValid() {
+  var name = (S.routine.name || "").trim();
+  var validSkills = S.routine.skills.filter(function (r) { return !!r.skillId; });
+  return !!name && validSkills.length > 0;
+}
+function saveRoutineDef() {
+  if (!routineDefValid()) return;
+  var name = (S.routine.name || "").trim();
+  var validSkills = S.routine.skills.filter(function (r) { return !!r.skillId; });
+  var favId = nextFavId();
+  var favCreatedAt = Date.now();
+  var favSkillIds = validSkills.map(function (r) { return r.skillId; });
+  FAVORITES.push({ id: favId, name: name, skillIds: favSkillIds, createdAt: favCreatedAt });
+  syncToBackend({ type: "addFavorite", id: favId, name: name, skillIds: favSkillIds, createdAt: favCreatedAt }, "ルーティーン登録");
+  S.routine = emptyRoutineDraft();
+  S.routineDefSavingFlash = true;
+  render();
+  setTimeout(function () { S.routineDefSavingFlash = false; render(); }, 900);
+}
+
+// ---- ルーティーンの「実施記録」(登録済みルーティーンを選んでタイム・Tスコア・動画を記録) ----
+function saveRoutineExecEntry() {
+  if (!S.athleteId || !S.routineExec.favoriteId || !S.routineExec.result) return;
+  var fav = FAVORITES.filter(function (f) { return f.id === S.routineExec.favoriteId; })[0];
+  if (!fav) return;
+  var entry = {
+    id: nextEntryId(),
+    athleteId: S.athleteId,
+    date: S.date,
+    platform: S.platform,
+    mode: "routine",
+    routineName: fav.name,
+    skills: fav.skillIds.slice(),
+    totalDD: routineTotalDD(fav.skillIds.map(function (sid) { return { skillId: sid }; })),
+    airTime: S.routineExec.airTime !== "" ? Number(S.routineExec.airTime) : null,
+    tScore: tScoreFor(S.routineExec.airTime),
+    result: S.routineExec.result || null,
+    note: (S.routineExec.note || "").trim(),
+    videoSuccessName: S.routineExec.videoSuccessName || null,
+    videoSuccessUrl: S.routineExec.videoSuccessUrl || null,
+    videoFailName: S.routineExec.videoFailName || null,
+    videoFailUrl: S.routineExec.videoFailUrl || null,
+    createdAt: Date.now(),
+  };
+  ENTRIES.unshift(entry);
+  markDateEntered(S.date);
+  syncToBackend({ type: "saveEntry", entry: entry }, "記録");
+  S.routineExec = emptyRoutineExecDraft();
+  S.routineExecSavingFlash = true;
+  render();
+  setTimeout(function () { S.routineExecSavingFlash = false; render(); }, 900);
+}
+
+function loadFavorite(id) {
+  var fav = FAVORITES.filter(function (f) { return f.id === id; })[0];
+  if (!fav) return;
+  S.routine.name = fav.name;
+  S.routine.skills = fav.skillIds.map(function (sid) {
+    var sk = skillById(sid);
+    return { family: sk ? sk.family : "forward", skillId: sid };
+  });
+  render();
+}
+function askDeleteFavorite(id) { S.confirmDeleteFavId = id; render(); }
+function cancelDeleteFavorite() { S.confirmDeleteFavId = null; render(); }
+function confirmDeleteFavorite(id) {
+  FAVORITES = FAVORITES.filter(function (f) { return f.id !== id; });
+  syncToBackend({ type: "deleteFavorite", id: id }, "ルーティーン削除");
+  S.confirmDeleteFavId = null;
+  render();
+}
+
+/* ---- 記録時の動画添付(ドラフト:このブラウザタブ内だけのプレビュー。どこにもアップロードされません) ---- */
+function videoFieldNames(type) {
+  if (type === "success") return { name: "videoSuccessName", url: "videoSuccessUrl" };
+  return { name: "videoFailName", url: "videoFailUrl" };
+}
+function videoScopeTarget(scope) {
+  if (scope === "single") return S.single;
+  if (scope === "routineExec") return S.routineExec;
+  return S.routine;
+}
+function handleVideoFileChange(scope, type, inputEl) {
+  var file = inputEl.files && inputEl.files[0];
+  if (!file) return;
+  var f = videoFieldNames(type);
+  var target = videoScopeTarget(scope);
+  if (target[f.url]) { try { URL.revokeObjectURL(target[f.url]); } catch (err) {} }
+  target[f.name] = file.name;
+  target[f.url] = URL.createObjectURL(file);
+  render();
+}
+function removeVideoFile(scope, type) {
+  var f = videoFieldNames(type);
+  var target = videoScopeTarget(scope);
+  if (target[f.url]) { try { URL.revokeObjectURL(target[f.url]); } catch (err) {} }
+  target[f.name] = null;
+  target[f.url] = null;
+  render();
+}
+function openVideoModal(url, caption) { S.videoModalUrl = url; S.videoModalCaption = caption || ""; render(); }
+function closeVideoModal() { S.videoModalUrl = null; S.videoModalCaption = ""; render(); }
+
+/* ---- ジャンプタイム(10本/20本)の過去推移モーダル ---- */
+function openJumpHistoryModal(athleteId, reps) { S.jumpHistoryModal = { athleteId: athleteId, reps: reps }; render(); }
+function closeJumpHistoryModal() { S.jumpHistoryModal = null; render(); }
+
+/* ---- ダッシュボードの「ルーティーン」カード:日・週・月・年ごとの実施本数をグラフで確認 ---- */
+function openRoutineDetailModal(athleteId) { S.routineDetailModal = athleteId; S.routineDetailPeriod = "day"; S.routineDetailBin = null; render(); }
+function closeRoutineDetailModal() { S.routineDetailModal = null; S.routineDetailBin = null; render(); }
+function setRoutineDetailPeriod(period) { S.routineDetailPeriod = period; S.routineDetailBin = null; render(); }
+function selectRoutineDetailBin(key) { S.routineDetailBin = key; render(); }
+function backToRoutineGraph() { S.routineDetailBin = null; render(); }
+
+/* ---- ダッシュボードの「1日の総本数(単発)」カード:日・週・月・年ごとの本数・成功率を確認 ---- */
+function openSingleDetailModal(athleteId) { S.singleDetailModal = athleteId; S.singleDetailPeriod = "day"; S.singleDetailBin = null; render(); }
+function closeSingleDetailModal() { S.singleDetailModal = null; S.singleDetailBin = null; render(); }
+function setSingleDetailPeriod(period) { S.singleDetailPeriod = period; S.singleDetailBin = null; render(); }
+function selectSingleDetailBin(key) { S.singleDetailBin = key; render(); }
+function backToSingleGraph() { S.singleDetailBin = null; render(); }
+
+/* ---- ダッシュボードの「よく使う台」カード:台ごとの使用割合を確認 ---- */
+function openPlatformDetailModal(athleteId) { S.platformDetailModal = athleteId; render(); }
+function closePlatformDetailModal() { S.platformDetailModal = null; render(); }
+
+// 月曜始まりの週の開始日・終了日(YYYY-MM-DD文字列)を返す
+function isoWeekRange(dateStr) {
+  var d = new Date(dateStr + "T00:00:00");
+  var day = d.getDay(); // 0=日,1=月,...,6=土
+  var diffToMonday = (day === 0 ? -6 : 1 - day);
+  var monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMonday);
+  var sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  function fmt(dt) {
+    var mm = String(dt.getMonth() + 1).padStart(2, "0");
+    var dd = String(dt.getDate()).padStart(2, "0");
+    return dt.getFullYear() + "-" + mm + "-" + dd;
+  }
+  return { start: fmt(monday), end: fmt(sunday) };
+}
+function periodLabel(period) {
+  return period === "day" ? "日" : period === "week" ? "週" : period === "month" ? "月" : "年";
+}
+// 選択中の粒度(日・週・月・年)で、1件の記録がどの区間に属するかのキーを返す
+function routineBinKey(period, dateStr) {
+  if (period === "day") return dateStr;
+  if (period === "week") return isoWeekRange(dateStr).start; // その週の月曜日をキーにする
+  if (period === "month") return dateStr.slice(0, 7);
+  return dateStr.slice(0, 4);
+}
+// バーグラフ・詳細見出しに表示する区間ラベル
+function routineBinLabel(period, key) {
+  if (period === "day") return key.slice(5);
+  if (period === "week") { var r = isoWeekRange(key); return r.start.slice(5) + "〜" + r.end.slice(5); }
+  return key;
+}
+// 実施記録を選択中の粒度で区間ごとに集計し、日付の古い順に並べて返す(グラフの1本1本に対応)
+function routineBinsFor(routineEs, period) {
+  var map = {};
+  routineEs.forEach(function (e) {
+    var key = routineBinKey(period, e.date);
+    if (!map[key]) map[key] = [];
+    map[key].push(e);
+  });
+  var keys = Object.keys(map).sort();
+  return keys.map(function (key) {
+    return { key: key, label: routineBinLabel(period, key), count: map[key].length, entries: map[key] };
+  });
+}
+// 単発(技記録)を選択中の粒度で区間ごとに集計: 本数(全技合計の成功+失敗)・成功数・成功率を返す(日付の古い順)
+function singleBinsFor(singleEs, period) {
+  var map = {};
+  singleEs.forEach(function (e) {
+    var key = routineBinKey(period, e.date);
+    if (!map[key]) map[key] = { entries: [], reps: 0, success: 0 };
+    map[key].entries.push(e);
+    map[key].reps += entryCount(e);
+    map[key].success += Number(e.success) || 0;
+  });
+  var keys = Object.keys(map).sort();
+  return keys.map(function (key) {
+    var b = map[key];
+    var rate = b.reps > 0 ? Math.round((b.success / b.reps) * 100) : null;
+    return { key: key, label: routineBinLabel(period, key), reps: b.reps, success: b.success, rate: rate, entries: b.entries };
+  });
+}
+
+/* ---- 記録の削除 ---- */
+function askDeleteEntry(id) { S.confirmDeleteId = id; render(); }
+function cancelDeleteEntry() { S.confirmDeleteId = null; render(); }
+function confirmDeleteEntry(id) {
+  ENTRIES = ENTRIES.filter(function (e) { return e.id !== id; });
+  syncToBackend({ type: "deleteEntry", id: id }, "記録削除");
+  S.confirmDeleteId = null;
+  render();
+}
+
+/* ---- ダッシュボード操作 ---- */
+function setDashScope(v) { S.dashScope = v; render(); }
+function setDashRankMode(v) { S.dashRankMode = v; render(); }
+function setDashTechMode(v) { S.dashTechMode = v; render(); }
+
+function athleteName(id) {
+  var a = ATHLETES.filter(function (x) { return x.id === id; })[0];
+  return a ? a.name : "(不明な選手)";
+}
+
+/* ---- 技の難度点カード ---- */
+function renderSkillInfoCard(skill) {
+  if (!skill) return '<div class="empty-card">技が選択されていません</div>';
+  var pieces = [{ label: "基準点", value: skill.base }];
+  if (skill.twist !== null && skill.twist !== undefined) pieces.push({ label: "捻り加点", value: skill.twist });
+  if (skill.backBonus !== null && skill.backBonus !== undefined) pieces.push({ label: "後方加点", value: skill.backBonus });
+  var piecesHtml = pieces.map(function (p) {
+    return '<div class="dd-piece"><div class="dd-piece-label">' + escHtml(p.label) + '</div><div class="dd-piece-value">' + fmtDD(p.value) + "</div></div>";
+  }).join("");
+  piecesHtml += '<div class="dd-piece total"><div class="dd-piece-label">難度点(DD)</div><div class="dd-piece-value">' + fmtDD(skill.dd) + "</div></div>";
+  return (
+    '<div class="skill-info-card">' +
+    '<div class="skill-info-name">' + escHtml(skill.name) + "</div>" +
+    (skill.numeric ? '<span class="skill-info-code">' + escHtml(skill.numeric) + "</span>" : "") +
+    '<div class="dd-breakdown">' + piecesHtml + "</div>" +
+    "</div>"
+  );
+}
+
+/* ---- 単発フォーム ---- */
+function renderSingleForm() {
+  var skill = skillById(S.single.skillId);
+  var familyChips = ["forward", "backward"].map(function (fam) {
+    var label = fam === "forward" ? "前系(フォワード)" : "後系(バックワード)";
+    return '<button class="chip-btn' + (S.single.family === fam ? " active" : "") + '" onclick="setSingleFamily(\'' + fam + "')\">" + label + "</button>";
+  }).join("");
+  var optionsHtml = buildSkillOptionsHtml(S.single.family, S.single.skillId);
+  var kakariChip = '<button class="chip-btn' + (S.single.kakari ? " active" : "") + '" style="flex:1;" onclick="toggleSingleKakari()">かかり練習<span class="chip-sub">(目標の技を分解して練習)</span></button>';
+  var targetOptionsHtml = S.single.kakari ? buildSkillOptionsHtml(S.single.family, S.single.kakariTarget) : "";
+  var kakariTargetBlock = S.single.kakari
+    ? ('<div style="margin-top:8px;"><span class="field-label">目標の技(任意・かかり練習で目指す完成技)</span><div class="select-wrap"><select class="select-input" onchange="setSingleKakariTarget(this.value)"><option value="">選択しない</option>' + targetOptionsHtml + '</select><span class="select-chevron">' + iconChevron(16, "#6E8779") + "</span></div></div>")
+    : "";
+  return (
+    '<div class="card raised section">' +
+    '<div><span class="field-label">系統</span><div class="chip-grid two">' + familyChips + "</div></div>" +
+    '<div><span class="field-label">技を選択(前系・後系全' + SKILLS.length + '技を収録)</span><div class="select-wrap"><select class="select-input" onchange="setSingleSkill(this.value)">' + optionsHtml + '</select><span class="select-chevron">' + iconChevron(16, "#6E8779") + "</span></div></div>" +
+    renderSkillInfoCard(skill) +
+    '<div><span class="field-label">本数</span><div class="inline-row">' +
+    '<div class="num-field"><span class="num-field-label">成功本数</span><input id="in-single-success" class="num-input" type="text" autocomplete="off" inputmode="numeric" min="0" placeholder="0" value="' + escAttr(S.single.success) + '" oninput="setSingleSuccess(this.value)"></div>' +
+    '<div class="num-field"><span class="num-field-label">失敗本数</span><input id="in-single-fail" class="num-input" type="text" autocomplete="off" inputmode="numeric" min="0" placeholder="0" value="' + escAttr(S.single.fail) + '" oninput="setSingleFail(this.value)"></div>' +
+    "</div>" +
+    '<div class="sub-label">成功・失敗のどちらか一方だけの入力でも保存できます(両方0や未入力の場合は保存できません)。</div></div>' +
+    '<div><span class="field-label">修飾</span><div class="inline-row">' + kakariChip + "</div>" +
+    '<div class="sub-label">「かかり練習」は、目標とする技を分解して練習することです(例:2回宙返りを覚えるために1回宙返り3/4のかかり練習をする)。ONにすると、目標にしている完成技を紐づけて記録できます。</div>' +
+    kakariTargetBlock +
+    "</div>" +
+    '<div><span class="field-label">メモ</span><textarea id="in-single-note" class="note-textarea" rows="2" placeholder="気づいたことをメモ" oninput="setSingleNote(this.value)">' + escHtml(S.single.note) + "</textarea></div>" +
+    renderVideoPlaceholder() +
+    '<button class="save-btn' + (S.savingFlash ? " flash" : "") + '"' + (!S.athleteId || !singleCountValid() ? " disabled" : "") + ' onclick="saveSingleEntry()">' + (S.savingFlash ? iconCheck(16, "#052A1B") + "<span>保存しました</span>" : "<span>記録を保存</span>") + "</button>" +
+    "</div>"
+  );
+}
+
+function renderAirtimeCard() {
+  var repsChips = ["10", "20"].map(function (n) {
+    return '<button class="chip-btn' + (S.airtime.airTimeReps === n ? " active" : "") + '" onclick="setAirtimeReps(\'' + n + "')\">" + n + "本</button>";
+  }).join("");
+  var blockReason = !S.athleteId ? "上部で選手を選択すると保存できます" : (!airtimeValid() ? "タイム(秒)を入力すると保存できます" : "");
+  return (
+    '<div class="card raised section">' +
+    '<div><span class="field-label">10本・20本ジャンプの高さ計測</span></div>' +
+    '<div><span class="field-label">本数</span><div class="chip-grid two">' + repsChips + "</div></div>" +
+    '<div><span class="num-field-label">タイム(秒)</span><input id="in-single-airtime" class="num-input" type="text" autocomplete="off" inputmode="decimal" step="0.01" min="0" placeholder="0.00" value="' + escAttr(S.airtime.airTime) + '" oninput="setAirtimeTime(this.value)"></div>' +
+    '<div class="sub-label">選択した本数の連続ジャンプにかかった合計タイムをストップウォッチで計測して入力してください。技の記録とは別に、タイム計測だけを単独で保存できます(任意項目)。</div>' +
+    (blockReason ? '<div class="sub-label" style="color:' + COLORS.amber + ';">※' + blockReason + "</div>" : "") +
+    '<button class="save-btn airtime-save-btn' + (S.airtimeSavingFlash ? " flash" : "") + '"' + (!S.athleteId || !airtimeValid() ? " disabled" : "") + ' onclick="saveAirtimeEntry()">' + (S.airtimeSavingFlash ? iconCheck(16, "#052A1B") + "<span>保存しました</span>" : "<span>タイムを保存</span>") + "</button>" +
+    "</div>"
+  );
+}
+
+/* ---- ルーティーンフォーム ---- */
+function renderRoutineSkillRow(idx, row) {
+  var sk = skillById(row.skillId);
+  var famChips = ["forward", "backward"].map(function (fam) {
+    var label = fam === "forward" ? "前系" : "後系";
+    return '<button class="chip-btn' + (row.family === fam ? " active" : "") + '" style="flex:1;font-size:10px;padding:7px 3px;" onclick="setRoutineSkillFamily(' + idx + ",'" + fam + "')\">" + label + "</button>";
+  }).join("");
+  var optionsHtml = buildSkillOptionsHtml(row.family, row.skillId);
+  return (
+    '<div class="tech-row">' +
+    '<div class="tech-row-top"><span class="tech-row-idx">技 ' + (idx + 1) + " / " + MAX_ROUTINE_SKILLS + "</span>" +
+    (sk ? '<span class="code-badge">DD ' + fmtDD(sk.dd) + "</span>" : "") +
+    (S.routine.skills.length > 1 ? '<button class="remove-btn" onclick="removeRoutineSkillRow(' + idx + ')">' + iconMinus(14, COLORS.textFaint) + "</button>" : "") +
+    "</div>" +
+    '<div class="inline-row">' + famChips + "</div>" +
+    '<div class="select-wrap"><select class="select-input" style="font-size:12px;padding:8px 30px 8px 10px;" onchange="setRoutineSkillId(' + idx + ", this.value)\">" + optionsHtml + '</select><span class="select-chevron">' + iconChevron(14, "#6E8779") + "</span></div>" +
+    (sk ? '<div class="sub-label">' + escHtml(sk.numeric || "") + " ・基準" + fmtDD(sk.base) + (sk.twist != null ? " +捻り" + fmtDD(sk.twist) : "") + (sk.backBonus != null ? " +後方" + fmtDD(sk.backBonus) : "") + "</div>" : "") +
+    "</div>"
+  );
+}
+
+function renderFavoritesSection() {
+  if (!FAVORITES.length) return '<div class="empty-card">保存されたお気に入りルーティーンはまだありません</div>';
+  return FAVORITES.map(function (f) {
+    var confirming = S.confirmDeleteFavId === f.id;
+    var total = routineTotalDD(f.skillIds.map(function (id) { return { skillId: id }; }));
+    return (
+      '<div class="favorite-item"><div><div class="favorite-name">' + escHtml(f.name) + "</div>" +
+      '<div class="favorite-meta">技' + f.skillIds.length + "本 ・合計DD " + fmtDD(total) + "</div></div>" +
+      '<div class="favorite-actions">' +
+      (confirming
+        ? '<button class="danger" onclick="confirmDeleteFavorite(\'' + f.id + "')\">削除確定</button><button onclick=\"cancelDeleteFavorite()\">戻る</button>"
+        : '<button onclick="loadFavorite(\'' + f.id + "')\">呼び出す</button><button class=\"danger\" onclick=\"askDeleteFavorite('" + f.id + "')\">削除</button>") +
+      "</div></div>"
+    );
+  }).join("");
+}
+
+/* ---- ルーティーン実施記録カード(トップ・登録済みルーティーンを選んでタイム/Tスコア/動画を記録) ---- */
+function renderRoutineExecCard() {
+  var fav = S.routineExec.favoriteId ? FAVORITES.filter(function (f) { return f.id === S.routineExec.favoriteId; })[0] : null;
+  var favOptions = FAVORITES.map(function (f) {
+    return '<option value="' + f.id + '"' + (S.routineExec.favoriteId === f.id ? " selected" : "") + ">" + escHtml(f.name) + "</option>";
+  }).join("");
+  var tDetail = computeTScore(S.routineExec.airTime);
+  var TSCORE_MODES = [
+    { key: "stepped", label: "区分表", sub: "階段式(既定)" },
+    { key: "linear", label: "連続式", sub: "滑らかな連続関数" },
+    { key: "datafit", label: "実測最適", sub: "実測データの回帰式" },
+    { key: "fixed", label: "固定", sub: "係数を指定" }
+  ];
+  var tScoreModeChips = TSCORE_MODES.map(function (m) {
+    return '<button class="chip-btn' + (S.tScoreMode === m.key ? " active" : "") + '" style="font-size:11px;" onclick="setTScoreMode(\'' + m.key + '\')">' + m.label + '<span class="chip-sub">' + m.sub + "</span></button>";
+  }).join("");
+  var blockReason = !S.athleteId ? "上部で選手を選択すると保存できます" : (!S.routineExec.favoriteId ? "登録したルーティーンを選択すると保存できます" : (!S.routineExec.result ? "結果(成功・失敗)のどちらかを選択すると保存できます" : ""));
+  var routineDisplay;
+  if (fav) {
+    var names = fav.skillIds.map(function (sid, i) {
+      var s = skillById(sid);
+      return (i + 1) + ". " + (s ? s.name : "(削除された技)");
+    });
+    routineDisplay =
+      '<div style="width:100%;font-size:11px;line-height:1.7;color:#9FBBAA;margin-top:8px;">' + names.map(escHtml).join(" / ") + "</div>" +
+      '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';margin-top:6px;">技' + fav.skillIds.length + "本 ・合計DD " + fmtDD(routineTotalDD(fav.skillIds.map(function (sid) { return { skillId: sid }; }))) + "</span>";
+  } else {
+    routineDisplay = '<div class="empty-card">' + (FAVORITES.length ? "上のプルダウンからルーティーンを選択してください" : "登録されたルーティーンがありません。下の「ルーティーンを登録」カードで登録してください。") + "</div>";
+  }
+  return (
+    '<div class="card raised section">' +
+    '<div><span class="field-label">ルーティーン実施記録</span></div>' +
+    (FAVORITES.length
+      ? ('<div class="select-wrap"><select class="select-input" onchange="setRoutineExecFavorite(this.value)"><option value="">登録したルーティーンを選択</option>' + favOptions + "</select><span class=\"select-chevron\">" + iconChevron(16, "#6E8779") + "</span></div>")
+      : "") +
+    routineDisplay +
+    '<div style="margin-top:12px;"><span class="num-field-label">タイム(秒・任意)</span><input id="in-routine-exec-airtime" class="num-input" type="text" autocomplete="off" inputmode="decimal" step="0.01" min="0" placeholder="0.00" value="' + escAttr(S.routineExec.airTime) + '" oninput="setRoutineExecAirTime(this.value)"></div>' +
+    '<div style="margin-top:10px;"><span class="field-label">Tスコア計算方式</span><div class="chip-grid four">' + tScoreModeChips + "</div></div>" +
+    (S.tScoreMode === "fixed"
+      ? ('<div style="margin-top:8px;"><span class="num-field-label">固定係数</span><input id="in-tscore-fixed-coef" class="num-input" type="text" autocomplete="off" inputmode="decimal" step="0.001" placeholder="0.800" value="' + escAttr(S.tScoreFixedCoef) + '" oninput="setTScoreFixedCoef(this.value)"></div>')
+      : "") +
+    (tDetail
+      ? ('<div class="sub-label" style="color:' + COLORS.accent + ';margin-top:6px;">目安Tスコア: ' + tDetail.score.toFixed(2) + "点 <span style=\"color:#6E8779;\">(" + tDetail.sw.toFixed(2) + " × " + tDetail.coef.toFixed(3) + " ・区分" + escHtml(tDetail.category) + ")</span></div>")
+      : (S.tScoreMode === "fixed" && S.routineExec.airTime !== "" ? '<div class="sub-label" style="color:' + COLORS.amber + ';margin-top:6px;">※固定係数を入力するとTスコアが表示されます</div>' : "")) +
+    '<div class="sub-label">ストップウォッチで計測した滞空時間(任意)。草加市トランポリン協会の代替スコア計算式(タイム×係数、https://1040tramp.com/score/)による目安のTスコアです(公式の採点ではありません)。</div>' +
+    '<div style="margin-top:12px;"><span class="field-label">結果(必須)</span><div class="chip-grid two">' +
+    '<button class="chip-btn' + (S.routineExec.result === "success" ? " active" : "") + '" onclick="setRoutineExecResult(\'success\')">成功</button>' +
+    '<button class="chip-btn amber' + (S.routineExec.result === "fail" ? " active" : "") + '" onclick="setRoutineExecResult(\'fail\')">失敗</button>' +
+    "</div></div>" +
+    '<div style="margin-top:10px;"><span class="field-label">メモ(任意)</span><textarea id="in-routine-exec-note" class="note-textarea" rows="2" placeholder="気づいたことをメモ" oninput="setRoutineExecNote(this.value)">' + escHtml(S.routineExec.note) + "</textarea></div>" +
+    renderVideoPlaceholder() +
+    (blockReason ? '<div class="sub-label" style="color:' + COLORS.amber + ';margin-top:8px;">※' + blockReason + "</div>" : "") +
+    '<button class="save-btn' + (S.routineExecSavingFlash ? " flash" : "") + '"' + (!S.athleteId || !S.routineExec.favoriteId || !S.routineExec.result ? " disabled" : "") + ' onclick="saveRoutineExecEntry()">' + (S.routineExecSavingFlash ? iconCheck(16, "#052A1B") + "<span>保存しました</span>" : "<span>実施記録を保存</span>") + "</button>" +
+    "</div>"
+  );
+}
+
+/* ---- ルーティーン登録カード(下・技構成を名前付きで登録するだけ。タイム/動画なし) ---- */
+function renderRoutineDefCard() {
+  var total = routineTotalDD(S.routine.skills);
+  var rowsHtml = S.routine.skills.map(function (row, idx) { return renderRoutineSkillRow(idx, row); }).join("");
+  var atMax = S.routine.skills.length >= MAX_ROUTINE_SKILLS;
+  var nameOk = !!(S.routine.name || "").trim();
+  var hasSkill = S.routine.skills.some(function (r) { return !!r.skillId; });
+  var blockReason = !nameOk ? "ルーティーン名を入力すると登録できます" : (!hasSkill ? "技を1つ以上選択すると登録できます" : "");
+  return (
+    '<div class="card raised section">' +
+    '<div><span class="field-label">ルーティーンを登録</span></div>' +
+    '<div><span class="field-label">ルーティーン名(必須)</span><input id="in-routine-def-name" class="text-input" type="text" placeholder="例:予選ルーティーン" value="' + escAttr(S.routine.name) + '" oninput="setRoutineName(this.value)" /></div>' +
+    '<div class="routine-total-bar"><span class="label">合計難度点(DD)・技' + S.routine.skills.length + "本</span><span class=\"value\">" + fmtDD(total) + "</span></div>" +
+    '<div class="tech-row-list">' + rowsHtml + "</div>" +
+    '<button class="add-row-btn"' + (atMax ? " disabled" : "") + ' onclick="addRoutineSkillRow()">' + iconPlus(14, COLORS.accent) + "<span>技を追加 (" + S.routine.skills.length + "/" + MAX_ROUTINE_SKILLS + ")</span></button>" +
+    '<div><span class="field-label">登録済みルーティーン</span><div style="margin-top:8px;">' + renderFavoritesSection() + "</div></div>" +
+    (blockReason ? '<div class="sub-label" style="color:' + COLORS.amber + ';">※' + blockReason + "</div>" : "") +
+    '<button class="save-btn' + (S.routineDefSavingFlash ? " flash" : "") + '"' + (!nameOk || !hasSkill ? " disabled" : "") + ' onclick="saveRoutineDef()">' + (S.routineDefSavingFlash ? iconCheck(16, "#052A1B") + "<span>登録しました</span>" : "<span>ルーティーンを登録</span>") + "</button>" +
+    "</div>"
+  );
+}
+
+/* ---- 動画添付スロット ---- */
+// 動画アップロードは未実装(準備中)。将来ここに録画添付UIを復活させる。
+function renderVideoPlaceholder() {
+  return (
+    '<div style="margin-top:10px;"><span class="field-label">動画</span>' +
+    '<div class="empty-card" style="padding:14px;font-size:12px;line-height:1.7;">動画アップロード機能は<span style="color:#FFB578;font-weight:700;">準備中</span>です。<br>近日中に、成功・失敗の動画を記録できるようになります。</div>' +
+    "</div>"
+  );
+}
+
+function renderVideoSlot(scope, type, label) {
+  var target = videoScopeTarget(scope);
+  var f = videoFieldNames(type);
+  var url = target[f.url], name = target[f.name];
+  var inputId = "video-input-" + scope + "-" + type;
+  var toneClass = type === "fail" ? " fail-tone" : "";
+  if (url) {
+    return (
+      '<div><span class="video-slot-label">' + escHtml(label) + "</span>" +
+      '<div class="video-slot-filled" onclick="openVideoModal(\'' + url + "','" + escAttr(label) + "')\">" +
+      '<video class="video-thumb" src="' + url + '" preload="metadata" muted playsinline></video>' +
+      '<span class="video-play-badge">' + iconPlay(12, "#EAF3EC") + "</span>" +
+      '<span class="video-slot-name">' + escHtml(name || "") + "</span>" +
+      '<button class="video-remove-btn" onclick="event.stopPropagation();removeVideoFile(\'' + scope + "','" + type + "')\">" + iconMinus(10, "#EAF3EC") + "</button>" +
+      "</div></div>"
+    );
+  }
+  return (
+    '<div><span class="video-slot-label">' + escHtml(label) + "</span>" +
+    '<label class="video-add-btn' + toneClass + '" for="' + inputId + '">' + iconPlus(14, type === "fail" ? COLORS.amber : COLORS.accent) + "<span>動画を選択</span></label>" +
+    '<input type="file" id="' + inputId + '" accept="video/*" style="display:none" onchange="handleVideoFileChange(\'' + scope + "','" + type + "',this)\">" +
+    "</div>"
+  );
+}
+
+function renderVideoModal() {
+  if (!S.videoModalUrl) return "";
+  return (
+    '<div class="video-modal-overlay open" onclick="closeVideoModal()"><div class="video-modal-box" onclick="event.stopPropagation()">' +
+    '<video src="' + S.videoModalUrl + '" controls autoplay playsinline></video>' +
+    '<div class="video-modal-caption">' + escHtml(S.videoModalCaption) + "</div>" +
+    '<button class="video-modal-close" onclick="closeVideoModal()">閉じる</button>' +
+    "</div></div>"
+  );
+}
+
+/* ---- 選手ピッカー・記録ページ共通部品 ---- */
+function renderAthletePicker() {
+  var options = ATHLETES.map(function (a) {
+    return '<option value="' + a.id + '"' + (S.athleteId === a.id ? " selected" : "") + ">" + escHtml(a.name) + "</option>";
+  }).join("");
+  return (
+    '<div class="card raised">' +
+    '<span class="field-label">選手</span>' +
+    (ATHLETES.length
+      ? ('<div class="select-wrap"><select class="select-input" onchange="selectAthlete(this.value)"><option value="">選手を選択してください</option>' + options + "</select><span class=\"select-chevron\">" + iconChevron(16, "#6E8779") + "</span></div>")
+      : '<div class="empty-card">まだ選手が登録されていません。下から追加してください。</div>') +
+    (S.addingAthlete
+      ? ('<div class="athlete-add-form" style="margin-top:10px;"><input class="text-input" type="text" placeholder="選手名" value="' + escAttr(S.newAthleteName) + '" oninput="setNewAthleteName(this.value)" /><button onclick="confirmAddAthlete()">追加</button></div>' +
+         '<div class="sub-label" style="margin-top:6px;cursor:pointer;" onclick="cancelAddAthlete()">キャンセル</div>')
+      : '<div class="add-row-btn" style="margin-top:10px;" onclick="openAddAthlete()">' + iconPlus(14, COLORS.accent) + "<span>選手を追加</span></div>") +
+    "</div>"
+  );
+}
+
+function renderPlatformChips() {
+  var chips = PLATFORMS.map(function (p) {
+    return '<button class="chip-btn' + (S.platform === p ? " active" : "") + '" onclick="selectPlatform(\'' + p + "')\">" + escHtml(p) + "</button>";
+  }).join("");
+  return '<div><span class="field-label">台</span><div class="chip-grid">' + chips + "</div></div>";
+}
+
+function renderModeToggle() {
+  return (
+    '<div class="tabs" style="margin:4px 0 0;">' +
+    '<button class="tab-btn' + (S.mode === "single" ? " active" : "") + '" onclick="selectMode(\'single\')">単発</button>' +
+    '<button class="tab-btn' + (S.mode === "routine" ? " active" : "") + '" onclick="selectMode(\'routine\')">ルーティーン</button>' +
+    "</div>"
+  );
+}
+
+function renderRecordPage() {
+  return (
+    '<div class="section">' +
+    renderAthletePicker() +
+    '<div class="card raised section">' +
+    '<div><span class="field-label">日付</span><input class="date-input" type="date" value="' + escAttr(S.date) + '" onchange="setDate(this.value)" />' +
+    (S.date !== todayStr() ? '<div class="date-warning">⚠️ ' + escHtml(S.date) + 'の日付が選択されています(今日ではありません)</div>' : "") +
+    "</div>" +
+    renderPlatformChips() +
+    "</div>" +
+    renderModeToggle() +
+    (S.mode === "single"
+      ? (renderSingleForm() + renderAirtimeCard() + renderRecentSection(S.athleteId))
+      : (renderRoutineExecCard() + renderRoutineDefCard() + renderRecentRoutinesSection(S.athleteId))) +
+    "</div>"
+  );
+}
+
+/* ---- 記録一覧 ---- */
+function skillLabelForEntry(e) {
+  var sk = skillById(e.skillId);
+  return sk ? sk.name : "(削除された技)";
+}
+
+function entryCount(e) { return (Number(e.success) || 0) + (Number(e.fail) || 0); }
+function entryRatePct(e) {
+  var total = entryCount(e);
+  return total > 0 ? Math.round((Number(e.success) || 0) / total * 100) : null;
+}
+
+function renderEntryCard(e) {
+  var confirming = S.confirmDeleteId === e.id;
+  var modeLabel = e.mode === "routine" ? "ルーティーン" : (e.mode === "airtime" ? "タイム計測" : "単発");
+  var content;
+  if (e.mode === "airtime") {
+    content =
+      '<span class="recent-tech-chip" style="color:' + COLORS.amber + ';">' + (e.airTimeReps ? e.airTimeReps + "本ジャンプ ・" : "") + "タイム" + e.airTime.toFixed(2) + "秒</span>";
+  } else if (e.mode === "single") {
+    var sk = skillById(e.skillId);
+    var targetSk = e.kakariTarget ? skillById(e.kakariTarget) : null;
+    var total = entryCount(e);
+    var rate = entryRatePct(e);
+    content =
+      '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';">' + (sk ? escHtml(sk.name) : "(削除された技)") + (sk && sk.numeric ? " (" + escHtml(sk.numeric) + ")" : "") + " ・DD" + fmtDD(e.totalDD) + "</span>" +
+      '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';">' + (e.success || 0) + "/" + total + "本" + (rate !== null ? " ・" + rate + "%" : "") + "</span>" +
+      (e.kakari ? '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';border-color:#24603F;">かかり練習' + (targetSk ? " → " + escHtml(targetSk.name) : "") + "</span>" : "");
+  } else {
+    var names = e.skills.map(function (sid, i) {
+      var s = skillById(sid);
+      return (i + 1) + ". " + (s ? s.name : "(削除された技)");
+    });
+    content =
+      '<div style="width:100%;font-size:11px;line-height:1.7;color:#9FBBAA;">' + names.map(escHtml).join(" / ") + "</div>" +
+      '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';">技' + e.skills.length + "本 ・合計DD " + fmtDD(e.totalDD) + "</span>" +
+      (e.runCount ? '<span class="recent-tech-chip">実施' + e.runCount + "本</span>" : "") +
+      (e.airTime ? '<span class="recent-tech-chip">タイム' + e.airTime.toFixed(2) + "秒</span>" : "") +
+      (e.tScore ? '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';">目安Tスコア ' + e.tScore.toFixed(2) + "点</span>" : "") +
+      (e.result === "success" ? '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';border-color:#24603F;">成功</span>' : "") +
+      (e.result === "fail" ? '<span class="recent-tech-chip" style="color:' + COLORS.amber + ';border-color:#5A3B1E;">失敗</span>' : "");
+  }
+  var caption = e.mode === "routine" ? (e.routineName || "ルーティーン") : (e.mode === "airtime" ? "タイム計測" : skillLabelForEntry(e));
+  var videoBtns = "";
+  if (e.videoSuccessUrl) videoBtns += '<button class="recent-video-btn" onclick="openVideoModal(\'' + e.videoSuccessUrl + "','" + escAttr(caption + "(成功)") + "')\">" + iconPlay(9, COLORS.accent) + "成功</button>";
+  if (e.videoFailUrl) videoBtns += '<button class="recent-video-btn fail-tone" onclick="openVideoModal(\'' + e.videoFailUrl + "','" + escAttr(caption + "(失敗)") + "')\">" + iconPlay(9, COLORS.amber) + "失敗</button>";
+
+  return (
+    '<div class="recent-item">' +
+    '<div class="recent-top-row"><span class="recent-date">' + escHtml(e.date) + "</span>" +
+    '<span class="recent-mode-badge' + (e.mode === "routine" ? " routine" : (e.mode === "airtime" ? " airtime" : "")) + '">' + modeLabel + "</span></div>" +
+    '<div class="recent-meta">' + escHtml(athleteName(e.athleteId)) + " ・台:" + escHtml(e.platform) + (e.mode === "routine" && e.routineName ? " ・「" + escHtml(e.routineName) + "」" : "") + "</div>" +
+    '<div class="recent-content">' + content + "</div>" +
+    (e.note ? '<div class="recent-note">' + escHtml(e.note) + "</div>" : "") +
+    (videoBtns ? '<div class="recent-content" style="margin-top:6px;">' + videoBtns + "</div>" : "") +
+    '<div class="recent-actions">' +
+    (confirming
+      ? ('<button class="danger" onclick="confirmDeleteEntry(\'' + e.id + "')\">削除確定</button><button onclick=\"cancelDeleteEntry()\">戻る</button>")
+      : ('<button class="danger" onclick="askDeleteEntry(\'' + e.id + "')\">削除</button>")) +
+    "</div></div>"
+  );
+}
+
+function renderRecentSection(athleteId) {
+  var filtered = ENTRIES.filter(function (e) { return !athleteId || e.athleteId === athleteId; });
+  var list = filtered.length ? filtered.map(renderEntryCard).join("") : '<div class="empty-card">まだ記録がありません</div>';
+  return '<div><div class="recent-title">' + (athleteId ? "直近の記録" : "直近の記録(全選手)") + '</div><div class="recent-list">' + list + "</div></div>";
+}
+
+function renderRecentRoutinesSection(athleteId) {
+  var filtered = ENTRIES.filter(function (e) { return e.mode === "routine" && (!athleteId || e.athleteId === athleteId); });
+  var list = filtered.length ? filtered.map(renderEntryCard).join("") : '<div class="empty-card">まだ実施記録がありません</div>';
+  return '<div><div class="recent-title">' + (athleteId ? "直近のルーティーン" : "直近のルーティーン(全選手)") + '</div><div class="recent-list">' + list + "</div></div>";
+}
+
+/* ---- ダッシュボード共通部品 ---- */
+function statCard(label, value, sub) {
+  return '<div class="stat-card"><div class="stat-label">' + escHtml(label) + '</div><div class="stat-value">' + escHtml(value) + "</div>" + (sub ? '<div class="stat-sub">' + escHtml(sub) + "</div>" : "") + "</div>";
+}
+
+function clickableStatCard(label, value, sub, onclick) {
+  return '<div class="stat-card clickable" onclick="' + onclick + '"><div class="stat-label">' + escHtml(label) + '</div><div class="stat-value">' + escHtml(value) + "</div>" + (sub ? '<div class="stat-sub link">' + escHtml(sub) + "</div>" : "") + "</div>";
+}
+
+function renderRankList(items) {
+  if (!items.length) return '<div class="empty-card">データがありません</div>';
+  var maxV = Math.max.apply(null, items.map(function (i) { return i.value; }).concat([0.0001]));
+  return (
+    '<div class="rank-list">' +
+    items.map(function (it) {
+      var pct = maxV > 0 ? (it.value / maxV * 100) : 0;
+      return '<div class="rank-item"><span class="rank-name">' + escHtml(it.name) + '</span><div class="rank-bar-wrap"><div class="rank-bar' + (it.amber ? " amber" : "") + '" style="width:' + pct.toFixed(1) + '%;"></div></div><span class="rank-count">' + escHtml(it.display) + "</span></div>";
+    }).join("") +
+    "</div>"
+  );
+}
+
+function renderDDTrendChart(entries) {
+  var values = entries.map(function (e) { return e.totalDD || 0; });
+  var maxV = Math.max.apply(null, values.concat([1])) * 1.15;
+  var w = 400, h = 120, padX = 10, padTop = 10, padBottom = 10;
+  var innerH = h - padTop - padBottom;
+  var n = entries.length;
+  var stepX = n > 1 ? (w - padX * 2) / (n - 1) : 0;
+  var points = entries.map(function (e, i) {
+    var x = padX + stepX * i;
+    var y = padTop + innerH - ((e.totalDD || 0) / maxV) * innerH;
+    return { x: x, y: y };
+  });
+  var polyPoints = points.map(function (p) { return p.x.toFixed(1) + "," + p.y.toFixed(1); }).join(" ");
+  var circles = points.map(function (p) {
+    return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3" fill="' + COLORS.accent + '" stroke="#0A1712" stroke-width="1" />';
+  }).join("");
+  var gridLines = [0.25, 0.5, 0.75].map(function (f) {
+    var y = padTop + innerH * (1 - f);
+    return '<line x1="0" y1="' + y.toFixed(1) + '" x2="' + w + '" y2="' + y.toFixed(1) + '" stroke="#234534" stroke-width="1" stroke-dasharray="3,3" />';
+  }).join("");
+  var svg =
+    '<svg viewBox="0 0 ' + w + " " + h + '" width="100%" height="120" preserveAspectRatio="none">' +
+    gridLines +
+    '<polyline points="' + polyPoints + '" fill="none" stroke="' + COLORS.accent + '" stroke-width="2" />' +
+    circles +
+    "</svg>";
+  var tickIdxs = n <= 1 ? [0] : (n === 2 ? [0, 1] : [0, Math.floor((n - 1) / 2), n - 1]);
+  var uniqueIdxs = tickIdxs.filter(function (v, i, arr) { return arr.indexOf(v) === i; });
+  var ticksHtml = uniqueIdxs.map(function (i) {
+    var pct = n > 1 ? (i / (n - 1)) * 100 : 50;
+    return '<span style="left:' + pct.toFixed(1) + '%;">' + escHtml(entries[i].date.slice(5)) + "</span>";
+  }).join("");
+  return '<div class="chart-wrap">' + svg + '</div><div class="axis-ticks">' + ticksHtml + "</div><div class=\"stat-sub\" style=\"margin-top:2px;\">最大DD目盛り: " + fmtDD(maxV) + "</div>";
+}
+
+function renderJumpTimeTrendChart(entries) {
+  var values = entries.map(function (e) { return e.airTime || 0; });
+  var minV = Math.min.apply(null, values);
+  var maxV = Math.max.apply(null, values);
+  var range = maxV - minV;
+  if (range < 0.4) range = 0.4; // ensure the trend is visibly readable even when times are close together
+  var pad = range * 0.25;
+  var chartMin = Math.max(0, minV - pad);
+  var chartMax = maxV + pad;
+  var span = (chartMax - chartMin) || 1;
+  var w = 400, h = 150, padX = 16, padTop = 22, padBottom = 26;
+  var innerH = h - padTop - padBottom;
+  var n = entries.length;
+  var stepX = n > 1 ? (w - padX * 2) / (n - 1) : 0;
+  var bestIdx = 0;
+  values.forEach(function (v, i) { if (v > values[bestIdx]) bestIdx = i; });
+  var points = entries.map(function (e, i) {
+    var v = e.airTime || 0;
+    var x = padX + stepX * i;
+    var y = padTop + innerH - ((v - chartMin) / span) * innerH;
+    return { x: x, y: y, v: v };
+  });
+  var polyPoints = points.map(function (p) { return p.x.toFixed(1) + "," + p.y.toFixed(1); }).join(" ");
+  var areaPoints = polyPoints + " " + points[n - 1].x.toFixed(1) + "," + (padTop + innerH).toFixed(1) + " " + points[0].x.toFixed(1) + "," + (padTop + innerH).toFixed(1);
+  var circles = points.map(function (p, i) {
+    var isBest = i === bestIdx;
+    return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + (isBest ? 5 : 3) + '" fill="' + (isBest ? COLORS.accent : COLORS.amber) + '" stroke="#0A1712" stroke-width="1.5" />';
+  }).join("");
+  var valueLabels = points.map(function (p, i) {
+    var isBest = i === bestIdx;
+    var labelY = (p.y - 9 < padTop) ? p.y + 15 : p.y - 9;
+    return '<text x="' + p.x.toFixed(1) + '" y="' + labelY.toFixed(1) + '" font-size="11" text-anchor="middle" fill="' + (isBest ? COLORS.accent : "#B7C9BC") + '" font-weight="' + (isBest ? "700" : "400") + '">' + p.v.toFixed(2) + "</text>";
+  }).join("");
+  var gridLines = [0.25, 0.5, 0.75].map(function (f) {
+    var y = padTop + innerH * (1 - f);
+    return '<line x1="0" y1="' + y.toFixed(1) + '" x2="' + w + '" y2="' + y.toFixed(1) + '" stroke="#234534" stroke-width="1" stroke-dasharray="3,3" />';
+  }).join("");
+  var axisLabels =
+    '<text x="2" y="' + (padTop + 3).toFixed(1) + '" font-size="10" fill="' + COLORS.textFaint + '">' + chartMax.toFixed(2) + "秒</text>" +
+    '<text x="2" y="' + (padTop + innerH + 3).toFixed(1) + '" font-size="10" fill="' + COLORS.textFaint + '">' + chartMin.toFixed(2) + "秒</text>";
+  var svg =
+    '<svg viewBox="0 0 ' + w + " " + h + '" width="100%" height="150" preserveAspectRatio="none">' +
+    gridLines +
+    '<polygon points="' + areaPoints + '" fill="' + COLORS.amber + '" opacity="0.14" />' +
+    '<polyline points="' + polyPoints + '" fill="none" stroke="' + COLORS.amber + '" stroke-width="2" />' +
+    circles +
+    valueLabels +
+    axisLabels +
+    "</svg>";
+  var tickIdxs = n <= 1 ? [0] : (n === 2 ? [0, 1] : [0, Math.floor((n - 1) / 2), n - 1]);
+  var uniqueIdxs = tickIdxs.filter(function (v, i, arr) { return arr.indexOf(v) === i; });
+  var ticksHtml = uniqueIdxs.map(function (i) {
+    var pct = n > 1 ? (i / (n - 1)) * 100 : 50;
+    return '<span style="left:' + pct.toFixed(1) + '%;">' + escHtml(entries[i].date.slice(5)) + "</span>";
+  }).join("");
+  var first = values[0], last = values[values.length - 1];
+  var delta = last - first;
+  var deltaTxt = (delta >= 0 ? "+" : "") + delta.toFixed(2) + "秒";
+  var trendHtml = n > 1
+    ? ('<div class="stat-sub" style="margin-top:4px; color:' + (delta >= 0 ? COLORS.accent : COLORS.textFaint) + ';">初回 ' + first.toFixed(2) + "秒 → 最新 " + last.toFixed(2) + "秒(" + deltaTxt + (delta >= 0 ? " ・伸びています" : "") + ")</div>")
+    : "";
+  return (
+    '<div class="chart-wrap">' + svg + '</div><div class="axis-ticks">' + ticksHtml + "</div>" +
+    trendHtml +
+    '<div class="stat-sub" style="margin-top:2px;">緑の点=ベスト記録 ・タイムが長いほど高くジャンプできています</div>'
+  );
+}
+
+function renderJumpHistoryModal() {
+  if (!S.jumpHistoryModal) return "";
+  var athleteId = S.jumpHistoryModal.athleteId;
+  var reps = S.jumpHistoryModal.reps;
+  var athlete = ATHLETES.filter(function (a) { return a.id === athleteId; })[0];
+  var entries = ENTRIES.filter(function (e) { return e.mode === "airtime" && e.athleteId === athleteId && e.airTimeReps === reps; })
+    .sort(function (a, b) { return a.createdAt - b.createdAt; });
+  var best = entries.length ? Math.max.apply(null, entries.map(function (e) { return e.airTime; })) : null;
+  return (
+    '<div class="video-modal-overlay open" onclick="closeJumpHistoryModal()"><div class="video-modal-box" onclick="event.stopPropagation()">' +
+    '<div class="chart-card">' +
+    '<div class="chart-title">' + reps + "本ジャンプ タイムの推移" + (athlete ? "(" + escHtml(athlete.name) + ")" : "") + "</div>" +
+    (entries.length
+      ? (renderJumpTimeTrendChart(entries) + '<div class="stat-sub" style="margin-top:4px;">記録数 ' + entries.length + "件 ・ベストタイム " + best.toFixed(2) + "秒</div>")
+      : '<div class="empty-card">まだ記録がありません</div>') +
+    "</div>" +
+    '<button class="video-modal-close" onclick="closeJumpHistoryModal()">閉じる</button>' +
+    "</div></div>"
+  );
+}
+
+/* ---- ダッシュボードの「ルーティーン」カード:日・週・月・年ごとの実施本数バーグラフ(タップで詳細) ---- */
+function renderRoutineCountBarChart(bins, period) {
+  var maxV = Math.max.apply(null, bins.map(function (b) { return b.count; }).concat([1]));
+  var w = 400, h = 150, padX = 12, padTop = 22, padBottom = 26;
+  var innerH = h - padTop - padBottom;
+  var n = bins.length;
+  var slot = (w - padX * 2) / n;
+  var barW = Math.max(10, Math.min(34, slot * 0.55));
+  var bars = bins.map(function (b, i) {
+    var cx = padX + slot * (i + 0.5);
+    var barH = Math.max((b.count / maxV) * innerH, 3);
+    var y = padTop + innerH - barH;
+    return (
+      '<g style="cursor:pointer;" onclick="selectRoutineDetailBin(\'' + b.key + '\')">' +
+      '<rect x="' + (cx - barW / 2).toFixed(1) + '" y="' + (padTop).toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + innerH.toFixed(1) + '" fill="transparent" />' +
+      '<rect x="' + (cx - barW / 2).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + barH.toFixed(1) + '" rx="4" fill="' + COLORS.accent + '" />' +
+      '<text x="' + cx.toFixed(1) + '" y="' + (y - 6).toFixed(1) + '" font-size="11" text-anchor="middle" fill="' + COLORS.textFaint + '" font-weight="600">' + b.count + "</text>" +
+      "</g>"
+    );
+  }).join("");
+  var gridLines = [0.25, 0.5, 0.75].map(function (f) {
+    var y = padTop + innerH * (1 - f);
+    return '<line x1="0" y1="' + y.toFixed(1) + '" x2="' + w + '" y2="' + y.toFixed(1) + '" stroke="#234534" stroke-width="1" stroke-dasharray="3,3" />';
+  }).join("");
+  var svg =
+    '<svg viewBox="0 0 ' + w + " " + h + '" width="100%" height="150" preserveAspectRatio="none">' +
+    gridLines +
+    bars +
+    "</svg>";
+  var ticksHtml = bins.map(function (b, i) {
+    var pct = n > 0 ? ((i + 0.5) / n) * 100 : 50;
+    return '<span style="left:' + pct.toFixed(1) + '%;">' + escHtml(b.label) + "</span>";
+  }).join("");
+  return '<div class="chart-wrap">' + svg + '</div><div class="axis-ticks">' + ticksHtml + "</div>";
+}
+
+function renderRoutineDetailModal() {
+  if (!S.routineDetailModal) return "";
+  var athleteId = S.routineDetailModal;
+  var period = S.routineDetailPeriod || "day";
+  var athlete = ATHLETES.filter(function (a) { return a.id === athleteId; })[0];
+  var routineEs = ENTRIES.filter(function (e) { return e.mode === "routine" && e.athleteId === athleteId; })
+    .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  var periodChips = ["day", "week", "month", "year"].map(function (p) {
+    return '<button class="chip-btn' + (period === p ? " active" : "") + '" onclick="setRoutineDetailPeriod(\'' + p + "')\">" + periodLabel(p) + "</button>";
+  }).join("");
+  var bins = routineBinsFor(routineEs, period);
+  var selectedBin = S.routineDetailBin ? bins.filter(function (b) { return b.key === S.routineDetailBin; })[0] : null;
+  var body;
+  if (!routineEs.length) {
+    body = '<div class="empty-card">まだルーティーンの実施記録がありません</div>';
+  } else if (selectedBin) {
+    var sortedEntries = selectedBin.entries.slice().sort(function (a, b) { return b.createdAt - a.createdAt; });
+    body =
+      '<button class="back-link" onclick="backToRoutineGraph()">' + iconChevronLeft(14, "#9FBBAA") + "<span>グラフに戻る</span></button>" +
+      '<div class="stat-sub" style="margin:8px 0;">' + escHtml(selectedBin.label) + " ・実施 " + selectedBin.count + "本</div>" +
+      sortedEntries.map(renderEntryCard).join("");
+  } else {
+    body =
+      '<div class="stat-sub" style="margin-bottom:6px;">' + periodLabel(period) + "ごとの実施本数(バーをタップすると詳細を表示)</div>" +
+      renderRoutineCountBarChart(bins, period);
+  }
+  return (
+    '<div class="video-modal-overlay open" onclick="closeRoutineDetailModal()"><div class="video-modal-box" onclick="event.stopPropagation()">' +
+    '<div class="chart-card">' +
+    '<div class="chart-title">ルーティーン実施記録' + (athlete ? "(" + escHtml(athlete.name) + ")" : "") + "</div>" +
+    '<div class="chip-grid four" style="margin-bottom:10px;">' + periodChips + "</div>" +
+    body +
+    "</div>" +
+    '<button class="video-modal-close" onclick="closeRoutineDetailModal()">閉じる</button>' +
+    "</div></div>"
+  );
+}
+
+/* ---- ダッシュボードの「1日の総本数(単発)」カード:日・週・月・年ごとの本数・成功率バーグラフ(タップで詳細) ---- */
+function renderSingleCountBarChart(bins, period) {
+  var maxV = Math.max.apply(null, bins.map(function (b) { return b.reps; }).concat([1]));
+  var w = 400, h = 160, padX = 12, padTop = 30, padBottom = 26;
+  var innerH = h - padTop - padBottom;
+  var n = bins.length;
+  var slot = (w - padX * 2) / n;
+  var barW = Math.max(10, Math.min(34, slot * 0.55));
+  var bars = bins.map(function (b, i) {
+    var cx = padX + slot * (i + 0.5);
+    var barH = Math.max((b.reps / maxV) * innerH, 3);
+    var y = padTop + innerH - barH;
+    return (
+      '<g style="cursor:pointer;" onclick="selectSingleDetailBin(\'' + b.key + '\')">' +
+      '<rect x="' + (cx - barW / 2).toFixed(1) + '" y="' + (padTop).toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + innerH.toFixed(1) + '" fill="transparent" />' +
+      '<rect x="' + (cx - barW / 2).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + barH.toFixed(1) + '" rx="4" fill="' + COLORS.accent + '" />' +
+      '<text x="' + cx.toFixed(1) + '" y="' + (y - 15).toFixed(1) + '" font-size="11" text-anchor="middle" fill="' + COLORS.textFaint + '" font-weight="600">' + b.reps + "本</text>" +
+      '<text x="' + cx.toFixed(1) + '" y="' + (y - 4).toFixed(1) + '" font-size="9" text-anchor="middle" fill="' + (b.rate !== null ? COLORS.accent : COLORS.textFaint) + '">' + (b.rate !== null ? b.rate + "%" : "-") + "</text>" +
+      "</g>"
+    );
+  }).join("");
+  var gridLines = [0.25, 0.5, 0.75].map(function (f) {
+    var y = padTop + innerH * (1 - f);
+    return '<line x1="0" y1="' + y.toFixed(1) + '" x2="' + w + '" y2="' + y.toFixed(1) + '" stroke="#234534" stroke-width="1" stroke-dasharray="3,3" />';
+  }).join("");
+  var svg =
+    '<svg viewBox="0 0 ' + w + " " + h + '" width="100%" height="160" preserveAspectRatio="none">' +
+    gridLines +
+    bars +
+    "</svg>";
+  var ticksHtml = bins.map(function (b, i) {
+    var pct = n > 0 ? ((i + 0.5) / n) * 100 : 50;
+    return '<span style="left:' + pct.toFixed(1) + '%;">' + escHtml(b.label) + "</span>";
+  }).join("");
+  return '<div class="chart-wrap">' + svg + '</div><div class="axis-ticks">' + ticksHtml + "</div>";
+}
+
+function renderSingleDetailModal() {
+  if (!S.singleDetailModal) return "";
+  var athleteId = S.singleDetailModal;
+  var period = S.singleDetailPeriod || "day";
+  var athlete = ATHLETES.filter(function (a) { return a.id === athleteId; })[0];
+  var singleEs = ENTRIES.filter(function (e) { return e.mode === "single" && e.athleteId === athleteId; })
+    .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  var periodChips = ["day", "week", "month", "year"].map(function (p) {
+    return '<button class="chip-btn' + (period === p ? " active" : "") + '" onclick="setSingleDetailPeriod(\'' + p + "')\">" + periodLabel(p) + "</button>";
+  }).join("");
+  var bins = singleBinsFor(singleEs, period);
+  var selectedBin = S.singleDetailBin ? bins.filter(function (b) { return b.key === S.singleDetailBin; })[0] : null;
+  var body;
+  if (!singleEs.length) {
+    body = '<div class="empty-card">まだ技の記録がありません</div>';
+  } else if (selectedBin) {
+    var sortedEntries = selectedBin.entries.slice().sort(function (a, b) { return b.createdAt - a.createdAt; });
+    body =
+      '<button class="back-link" onclick="backToSingleGraph()">' + iconChevronLeft(14, "#9FBBAA") + "<span>グラフに戻る</span></button>" +
+      '<div class="stat-sub" style="margin:8px 0;">' + escHtml(selectedBin.label) + " ・全技合計 " + selectedBin.reps + "本 ・成功率" + (selectedBin.rate !== null ? selectedBin.rate + "%" : "-") + "</div>" +
+      sortedEntries.map(renderEntryCard).join("");
+  } else {
+    body =
+      '<div class="stat-sub" style="margin-bottom:6px;">' + periodLabel(period) + "ごとの全技合計本数・成功率(バーをタップすると詳細を表示)</div>" +
+      renderSingleCountBarChart(bins, period);
+  }
+  return (
+    '<div class="video-modal-overlay open" onclick="closeSingleDetailModal()"><div class="video-modal-box" onclick="event.stopPropagation()">' +
+    '<div class="chart-card">' +
+    '<div class="chart-title">1日の総本数(単発)' + (athlete ? "(" + escHtml(athlete.name) + ")" : "") + "</div>" +
+    '<div class="chip-grid four" style="margin-bottom:10px;">' + periodChips + "</div>" +
+    body +
+    "</div>" +
+    '<button class="video-modal-close" onclick="closeSingleDetailModal()">閉じる</button>' +
+    "</div></div>"
+  );
+}
+
+/* ---- ダッシュボードの「よく使う台」カード:台ごとの総本数・成功率(単発の技記録が基準) ---- */
+// 棒(総本数・左軸)+点線(成功率・右軸0-100%固定)の複合グラフ。台ごとに「どれだけ飛んでいて」「どれだけ成功しているか」を一目で比較できるようにする。
+function renderPlatformComboChart(items) {
+  var maxReps = Math.max.apply(null, items.map(function (it) { return it.reps; }).concat([1]));
+  var w = 400, h = 210, padX = 14, padTop = 30, padBottom = 30;
+  var innerH = h - padTop - padBottom;
+  var n = items.length;
+  var slot = (w - padX * 2) / n;
+  var barW = Math.max(28, Math.min(52, slot * 0.45));
+  var points = items.map(function (it, i) {
+    var cx = padX + slot * (i + 0.5);
+    var barH = maxReps > 0 ? Math.max((it.reps / maxReps) * innerH, it.reps > 0 ? 3 : 0) : 0;
+    var barY = padTop + innerH - barH;
+    var rateForY = it.rate === null ? 0 : it.rate;
+    var circleY = padTop + innerH - (rateForY / 100) * innerH;
+    return { cx: cx, barY: barY, barH: barH, circleY: circleY, it: it };
+  });
+  var baseline = padTop + innerH;
+  var barsHtml = points.map(function (p) {
+    var numY = p.barH > 24 ? baseline - 10 : p.barY - 8;
+    var numColor = p.barH > 24 ? "#052A1B" : COLORS.textFaint;
+    return (
+      '<rect x="' + (p.cx - barW / 2).toFixed(1) + '" y="' + p.barY.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + p.barH.toFixed(1) + '" rx="5" fill="' + COLORS.accent + '" />' +
+      '<text x="' + p.cx.toFixed(1) + '" y="' + numY.toFixed(1) + '" font-size="13" text-anchor="middle" fill="' + numColor + '" font-weight="700">' + p.it.reps + "</text>"
+    );
+  }).join("");
+  var linePoints = points.map(function (p) { return p.cx.toFixed(1) + "," + p.circleY.toFixed(1); }).join(" ");
+  var lineHtml = points.length > 1 ? '<polyline points="' + linePoints + '" fill="none" stroke="' + COLORS.amber + '" stroke-width="2" stroke-dasharray="6,4" />' : "";
+  var circlesHtml = points.map(function (p) {
+    var label = p.it.rate === null ? "-" : p.it.rate + "%";
+    return (
+      '<circle cx="' + p.cx.toFixed(1) + '" cy="' + p.circleY.toFixed(1) + '" r="17" fill="' + COLORS.amber + '" stroke="#0A1712" stroke-width="2" />' +
+      '<text x="' + p.cx.toFixed(1) + '" y="' + (p.circleY + 4).toFixed(1) + '" font-size="11" text-anchor="middle" fill="#2A1707" font-weight="700">' + label + "</text>"
+    );
+  }).join("");
+  var axisLabels =
+    '<text x="2" y="' + (padTop + innerH + 12).toFixed(1) + '" font-size="9" fill="' + COLORS.textFaint + '">0</text>' +
+    '<text x="' + (w - 2) + '" y="' + (padTop + innerH + 12).toFixed(1) + '" font-size="9" text-anchor="end" fill="' + COLORS.textFaint + '">0%</text>' +
+    '<text x="' + (w - 2) + '" y="' + (padTop - 8).toFixed(1) + '" font-size="9" text-anchor="end" fill="' + COLORS.textFaint + '">100%</text>';
+  var svg =
+    '<svg viewBox="0 0 ' + w + " " + h + '" width="100%" height="210" preserveAspectRatio="none">' +
+    axisLabels + barsHtml + lineHtml + circlesHtml +
+    "</svg>";
+  var ticksHtml = items.map(function (it, i) {
+    var pct = n > 0 ? ((i + 0.5) / n) * 100 : 50;
+    return '<span style="left:' + pct.toFixed(1) + '%;">' + escHtml(it.name) + "</span>";
+  }).join("");
+  var legend =
+    '<div class="chart-legend-row">' +
+    '<span class="legend-item"><span class="legend-swatch" style="background:' + COLORS.accent + ';"></span>総本数(左軸・バー内が本数)</span>' +
+    '<span class="legend-item"><span class="legend-swatch dash" style="border-color:' + COLORS.amber + ';"></span>成功率(右軸・○内が%)</span>' +
+    "</div>";
+  return '<div class="chart-wrap">' + svg + '</div><div class="axis-ticks">' + ticksHtml + "</div>" + legend;
+}
+
+function renderPlatformDetailModal() {
+  if (!S.platformDetailModal) return "";
+  var athleteId = S.platformDetailModal;
+  var athlete = ATHLETES.filter(function (a) { return a.id === athleteId; })[0];
+  var singleEs = ENTRIES.filter(function (e) { return e.mode === "single" && e.athleteId === athleteId; });
+  var body;
+  if (!singleEs.length) {
+    body = '<div class="empty-card">まだ技の記録がありません</div>';
+  } else {
+    var byPlat = {};
+    PLATFORMS.forEach(function (p) { byPlat[p] = { reps: 0, success: 0 }; });
+    singleEs.forEach(function (e) {
+      byPlat[e.platform].reps += entryCount(e);
+      byPlat[e.platform].success += Number(e.success) || 0;
+    });
+    var items = PLATFORMS.map(function (p) {
+      var b = byPlat[p];
+      var rate = b.reps > 0 ? Math.round((b.success / b.reps) * 100) : null;
+      return { name: p, reps: b.reps, rate: rate };
+    });
+    body =
+      '<div class="stat-sub" style="margin-bottom:6px;">台ごとの総本数(単発)と成功率の比較</div>' +
+      renderPlatformComboChart(items);
+  }
+  return (
+    '<div class="video-modal-overlay open" onclick="closePlatformDetailModal()"><div class="video-modal-box" onclick="event.stopPropagation()">' +
+    '<div class="chart-card">' +
+    '<div class="chart-title">台ごとの総本数・成功率' + (athlete ? "(" + escHtml(athlete.name) + ")" : "") + "</div>" +
+    body +
+    "</div>" +
+    '<button class="video-modal-close" onclick="closePlatformDetailModal()">閉じる</button>' +
+    "</div></div>"
+  );
+}
+
+function renderDashScopeSelect() {
+  var opts =
+    '<option value="team"' + (S.dashScope === "team" ? " selected" : "") + ">チーム全体</option>" +
+    ATHLETES.map(function (a) { return '<option value="' + a.id + '"' + (S.dashScope === a.id ? " selected" : "") + ">" + escHtml(a.name) + "</option>"; }).join("");
+  return '<div class="card raised"><span class="field-label">表示対象</span><div class="select-wrap"><select class="select-input" onchange="setDashScope(this.value)">' + opts + '</select><span class="select-chevron">' + iconChevron(16, "#6E8779") + "</span></div></div>";
+}
+
+function renderTeamDashboard() {
+  var totalEntries = ENTRIES.length;
+  var singleEntries = ENTRIES.filter(function (e) { return e.mode === "single"; });
+  var singleCount = singleEntries.length;
+  var routineCount = ENTRIES.filter(function (e) { return e.mode === "routine"; }).length;
+  var totalDDSum = ENTRIES.reduce(function (s, e) { return s + (e.totalDD || 0); }, 0);
+  var totalReps = singleEntries.reduce(function (s, e) { return s + entryCount(e); }, 0);
+  var totalSuccess = singleEntries.reduce(function (s, e) { return s + (Number(e.success) || 0); }, 0);
+  var teamRate = totalReps > 0 ? Math.round(totalSuccess / totalReps * 100) : null;
+  var statsHtml =
+    '<div class="stat-grid">' +
+    statCard("登録選手数", ATHLETES.length + "名") +
+    statCard("総記録数", totalEntries + "件") +
+    statCard("単発記録", singleCount + "件") +
+    statCard("ルーティーン記録", routineCount + "件") +
+    statCard("総本数(単発)", totalReps + "本", teamRate !== null ? "成功率 " + teamRate + "%" : "記録なし") +
+    statCard("合計難度点", fmtDD(totalDDSum)) +
+    "</div>";
+
+  var platformCounts = PLATFORMS.map(function (p) {
+    var c = ENTRIES.filter(function (e) { return e.platform === p; }).length;
+    return { name: p, value: c, display: c + "件" };
+  });
+  var platformChart = '<div class="chart-card"><div class="chart-title">台別使用件数</div>' + renderRankList(platformCounts) + "</div>";
+
+  var famCount = { forward: 0, backward: 0 };
+  ENTRIES.forEach(function (e) {
+    if (e.mode === "single") { var sk = skillById(e.skillId); if (sk) famCount[sk.family]++; }
+    else if (e.mode === "routine") { e.skills.forEach(function (sid) { var sk = skillById(sid); if (sk) famCount[sk.family]++; }); }
+  });
+  var famChart =
+    '<div class="chart-card"><div class="chart-title">技の系統内訳(のべ本数)</div>' +
+    renderRankList([
+      { name: "前系", value: famCount.forward, display: famCount.forward + "本" },
+      { name: "後系", value: famCount.backward, display: famCount.backward + "本", amber: true },
+    ]) +
+    "</div>";
+
+  var rankMode = S.dashRankMode;
+  var athleteStats = ATHLETES.map(function (a) {
+    var es = ENTRIES.filter(function (e) { return e.athleteId === a.id; });
+    var total = es.reduce(function (s, e) { return s + (e.totalDD || 0); }, 0);
+    return { name: a.name, count: es.length, total: total };
+  });
+  athleteStats.sort(function (a, b) { return rankMode === "total" ? b.total - a.total : b.count - a.count; });
+  var rankItems = athleteStats.map(function (a) {
+    return rankMode === "total" ? { name: a.name, value: a.total, display: fmtDD(a.total) } : { name: a.name, value: a.count, display: a.count + "件" };
+  });
+  var athleteRankChart =
+    '<div class="chart-card"><div class="chart-title-row"><span>選手ランキング</span><div class="mini-toggle">' +
+    '<button class="' + (rankMode === "total" ? "active" : "") + '" onclick="setDashRankMode(\'total\')">合計DD</button>' +
+    '<button class="' + (rankMode === "count" ? "active" : "") + '" onclick="setDashRankMode(\'count\')">記録数</button>' +
+    "</div></div>" +
+    renderRankList(rankItems) +
+    "</div>";
+
+  return statsHtml + platformChart + famChart + athleteRankChart + renderRecentSection(null);
+}
+
+function renderAthleteDashboard(athleteId) {
+  var athlete = ATHLETES.filter(function (a) { return a.id === athleteId; })[0];
+  if (!athlete) return '<div class="empty-card">選手が見つかりません</div>';
+  var es = ENTRIES.filter(function (e) { return e.athleteId === athleteId; });
+  var singleEs = es.filter(function (e) { return e.mode === "single"; });
+  var routineEs = es.filter(function (e) { return e.mode === "routine"; });
+  var avgSingleDD = singleEs.length ? (singleEs.reduce(function (s, e) { return s + e.totalDD; }, 0) / singleEs.length) : 0;
+  var bestSingleDD = singleEs.length ? Math.max.apply(null, singleEs.map(function (e) { return e.totalDD; })) : 0;
+  var platformTop = "-";
+  if (es.length) {
+    var pc = {};
+    es.forEach(function (e) { pc[e.platform] = (pc[e.platform] || 0) + 1; });
+    platformTop = Object.keys(pc).sort(function (a, b) { return pc[b] - pc[a]; })[0];
+  }
+  var airtimeEs = es.filter(function (e) { return e.mode === "airtime"; });
+  var jump10Es = airtimeEs.filter(function (e) { return e.airTimeReps === 10; });
+  var jump20Es = airtimeEs.filter(function (e) { return e.airTimeReps === 20; });
+  var best10 = jump10Es.length ? Math.max.apply(null, jump10Es.map(function (e) { return e.airTime; })) : null;
+  var best20 = jump20Es.length ? Math.max.apply(null, jump20Es.map(function (e) { return e.airTime; })) : null;
+
+  // 「1日の総本数」= 直近に単発記録がある日(実際の今日の日付ではない)を基準に、その日だけの本数・成功率を集計
+  var latestSingleDate = singleEs.length
+    ? singleEs.reduce(function (max, e) { return e.date > max ? e.date : max; }, singleEs[0].date)
+    : null;
+  var dayEs = latestSingleDate ? singleEs.filter(function (e) { return e.date === latestSingleDate; }) : [];
+  var dayTotalReps = dayEs.reduce(function (s, e) { return s + entryCount(e); }, 0);
+  var dayTotalSuccess = dayEs.reduce(function (s, e) { return s + (Number(e.success) || 0); }, 0);
+  var dayRate = dayTotalReps > 0 ? Math.round(dayTotalSuccess / dayTotalReps * 100) : null;
+
+  var statsHtml =
+    '<div class="stat-grid">' +
+    clickableStatCard("10本ジャンプ ベストタイム", best10 !== null ? best10.toFixed(2) + "秒" : "記録なし", jump10Es.length ? "タップで推移を見る" : "", "openJumpHistoryModal('" + athleteId + "',10)") +
+    clickableStatCard("20本ジャンプ ベストタイム", best20 !== null ? best20.toFixed(2) + "秒" : "記録なし", jump20Es.length ? "タップで推移を見る" : "", "openJumpHistoryModal('" + athleteId + "',20)") +
+    clickableStatCard("ルーティーン", routineEs.length + "本", routineEs.length ? "タップで日・週・月・年の実施ペースを見る" : "", "openRoutineDetailModal('" + athleteId + "')") +
+    statCard("試技", "準備中", "近日公開予定") +
+    clickableStatCard("1日の総本数(単発)", latestSingleDate ? (dayTotalReps + "本") : "記録なし", singleEs.length ? ("成功率" + (dayRate !== null ? dayRate + "%" : "-") + " ・" + latestSingleDate.slice(5) + " ・タップで日・週・月・年の推移を見る") : "", "openSingleDetailModal('" + athleteId + "')") +
+    statCard("単発最高DD・平均DD", fmtDD(bestSingleDD), "平均" + fmtDD(avgSingleDD)) +
+    clickableStatCard("よく使う台", platformTop, es.length ? "タップで台ごとの総本数・成功率を見る" : "", "openPlatformDetailModal('" + athleteId + "')") +
+    "</div>";
+
+  var chronological = es.filter(function (e) { return e.mode !== "airtime"; }).sort(function (a, b) { return a.createdAt - b.createdAt; });
+  var trendChart =
+    '<div class="chart-card"><div class="chart-title">難度点(DD)の推移(記録ごと)</div>' +
+    (chronological.length ? renderDDTrendChart(chronological) : '<div class="empty-card">まだ記録がありません</div>') +
+    "</div>";
+
+  var famCount = { forward: 0, backward: 0 };
+  var platCount = {};
+  PLATFORMS.forEach(function (p) { platCount[p] = 0; });
+  es.forEach(function (e) {
+    platCount[e.platform] = (platCount[e.platform] || 0) + 1;
+    if (e.mode === "single") { var sk = skillById(e.skillId); if (sk) famCount[sk.family]++; }
+    else if (e.mode === "routine") { e.skills.forEach(function (sid) { var sk = skillById(sid); if (sk) famCount[sk.family]++; }); }
+  });
+  var famChart =
+    '<div class="chart-card"><div class="chart-title">系統内訳(のべ本数)</div>' +
+    renderRankList([
+      { name: "前系", value: famCount.forward, display: famCount.forward + "本" },
+      { name: "後系", value: famCount.backward, display: famCount.backward + "本", amber: true },
+    ]) +
+    "</div>";
+  var platItems = PLATFORMS.map(function (p) { return { name: p, value: platCount[p], display: platCount[p] + "件" }; });
+  var platChart = '<div class="chart-card"><div class="chart-title">台別使用件数</div>' + renderRankList(platItems) + "</div>";
+
+  var techMode = S.dashTechMode;
+  var usage = {};
+  es.forEach(function (e) {
+    if (e.mode === "single") {
+      var sk = skillById(e.skillId);
+      if (sk) {
+        if (!usage[sk.name]) usage[sk.name] = { count: 0, dd: sk.dd, singleReps: 0, singleSuccess: 0 };
+        var reps = entryCount(e);
+        usage[sk.name].count += reps > 0 ? reps : 1;
+        usage[sk.name].singleReps += reps;
+        usage[sk.name].singleSuccess += Number(e.success) || 0;
+      }
+    } else if (e.mode === "routine") {
+      e.skills.forEach(function (sid) {
+        var s2 = skillById(sid);
+        if (s2) { if (!usage[s2.name]) usage[s2.name] = { count: 0, dd: s2.dd, singleReps: 0, singleSuccess: 0 }; usage[s2.name].count += 1; }
+      });
+    }
+  });
+  var usageArr = Object.keys(usage).map(function (name) {
+    var u = usage[name];
+    var rate = u.singleReps > 0 ? Math.round(u.singleSuccess / u.singleReps * 100) : null;
+    return { name: name, count: u.count, dd: u.dd, rate: rate };
+  });
+  if (techMode === "count") usageArr.sort(function (a, b) { return b.count - a.count; });
+  else usageArr.sort(function (a, b) { return b.dd - a.dd; });
+  usageArr = usageArr.slice(0, 8);
+  var usageItems = usageArr.map(function (u) {
+    return techMode === "count"
+      ? { name: u.name, value: u.count, display: u.count + "本" + (u.rate !== null ? " ・" + u.rate + "%" : "") }
+      : { name: u.name, value: u.dd, display: "DD" + fmtDD(u.dd) };
+  });
+  var usageChart =
+    '<div class="chart-card"><div class="chart-title-row"><span>技別ランキング</span><div class="mini-toggle">' +
+    '<button class="' + (techMode === "count" ? "active" : "") + '" onclick="setDashTechMode(\'count\')">本数・成功率</button>' +
+    '<button class="' + (techMode === "dd" ? "active" : "") + '" onclick="setDashTechMode(\'dd\')">難度点</button>' +
+    "</div></div>" +
+    renderRankList(usageItems) +
+    "</div>";
+
+  return (
+    '<div class="card raised" style="text-align:center;"><div style="font-size:15px;font-weight:700;">' + escHtml(athlete.name) + "</div></div>" +
+    statsHtml + trendChart + famChart + platChart + usageChart + renderRecentSection(athleteId)
+  );
+}
+
+function renderDashboardPage() {
+  return '<div class="section">' + renderDashScopeSelect() + (S.dashScope === "team" ? renderTeamDashboard() : renderAthleteDashboard(S.dashScope)) + "</div>";
+}
+
+/* ---- 全体シェル ---- */
+function renderHeader() {
+  return (
+    '<div class="header-row"><div class="header-left">' +
+    (LOGO_DATA_URI ? '<img class="app-logo" src="' + LOGO_DATA_URI + '" alt="logo" />' : "") +
+    '<div class="app-title-wrap"><div class="app-title">' + escHtml(TEAM_NAME) + '</div><div class="app-tag">トランポリン競技 練習・大会記録</div></div>' +
+    "</div></div>"
+  );
+}
+
+function renderTabs() {
+  return (
+    '<div class="tabs">' +
+    '<button class="tab-btn' + (S.tab === "record" ? " active" : "") + '" onclick="selectTab(\'record\')">記録</button>' +
+    '<button class="tab-btn' + (S.tab === "dashboard" ? " active" : "") + '" onclick="selectTab(\'dashboard\')">ダッシュボード</button>' +
+    "</div>"
+  );
+}
+
+function renderApp() {
+  // 初回ロード中(スプレッドシートからの読み込み待ち)
+  if (!BACKEND_READY) {
+    return (
+      '<div class="app-shell"><div class="container">' +
+      renderHeader() +
+      '<div class="empty-card" style="margin-top:24px;padding:40px 24px;">データを読み込んでいます…</div>' +
+      "</div></div>"
+    );
+  }
+  var errBanner = backendError
+    ? '<div class="date-warning" style="margin-bottom:16px;">⚠️ ' + escHtml(backendError) + "</div>"
+    : "";
+  return (
+    '<div class="app-shell"><div class="container">' +
+    errBanner +
+    renderHeader() +
+    renderTabs() +
+    (S.tab === "record" ? renderRecordPage() : renderDashboardPage()) +
+    "</div></div>" +
+    renderVideoModal() +
+    renderJumpHistoryModal() +
+    renderRoutineDetailModal() +
+    renderSingleDetailModal() +
+    renderPlatformDetailModal()
+  );
+}
+
+
+function render() {
+  var root = document.getElementById("root");
+  var active = document.activeElement;
+  var focusId = null, selStart = null, selEnd = null;
+  if (active && active.id && root.contains(active)) {
+    focusId = active.id;
+    try { selStart = active.selectionStart; selEnd = active.selectionEnd; } catch (e) {}
+  }
+  root.innerHTML = renderApp();
+  if (focusId) {
+    var el = document.getElementById(focusId);
+    if (el) {
+      el.focus();
+      if (selStart !== null && selStart !== undefined && typeof el.setSelectionRange === "function") {
+        try { el.setSelectionRange(selStart, selEnd); } catch (e) {}
+      }
+    }
+  }
+}
+
+/* ---- 起動:まずスプレッドシートから全データを読み込む ---- */
+render();      // 読み込み中画面を即表示
+loadAll();     // doGet完了後にデータ入りで再描画
+</script>
+</body>
+</html>
