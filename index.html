@@ -577,7 +577,12 @@ function saveSingleEntry() {
 }
 
 /* ---- タイム計測(単独記録・単発タブ内の別カード) ---- */
-function setAirtimeTime(v) { S.airtime.airTime = v; render(); }
+/* タイムを打っている間に更新するのは、注意書きと「タイムを保存」ボタンだけ */
+function refreshAirtimeValidity() {
+  setNote_("airtime-note", !S.athleteId ? "上部で選手を選択すると保存できます" : (!airtimeValid() ? "タイム(秒)を入力すると保存できます" : ""));
+  setDisabled_("airtime-save", !S.athleteId || !airtimeValid());
+}
+function setAirtimeTime(v) { S.airtime.airTime = v; refreshAirtimeValidity(); }
 function setAirtimeReps(v) { S.airtime.airTimeReps = v; render(); }
 
 function airtimeValid() {
@@ -623,12 +628,38 @@ function setRoutineSkillFamily(idx, fam) {
   render();
 }
 function setRoutineSkillId(idx, id) { S.routine.skills[idx].skillId = id; render(); }
-function setRoutineName(v) { S.routine.name = v; render(); }
+/* テキスト入力は render() を呼ばない。
+   render() は #root を丸ごと作り直すため、入力のたびに呼ぶと入力欄が別の要素に差し替わり、
+   iPhoneの日本語入力では変換中の文字が消えたり入力が取りこぼされたりする。
+   代わりに、その入力に依存している箇所だけを直接書き換える。 */
+function setNote_(id, text) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text ? "※" + text : "";
+  el.style.display = text ? "" : "none";
+}
+function setDisabled_(id, disabled) {
+  var el = document.getElementById(id);
+  if (el) el.disabled = !!disabled;
+}
+/* ルーティーン名を打っている間に更新するのは、注意書きと「登録」ボタンの有効/無効だけ */
+function refreshRoutineDefValidity() {
+  var nameOk = !!(S.routine.name || "").trim();
+  var hasSkill = S.routine.skills.some(function (r) { return !!r.skillId; });
+  setNote_("routine-def-note", !nameOk ? "ルーティーン名を入力すると登録できます" : (!hasSkill ? "技を1つ以上選択すると登録できます" : ""));
+  setDisabled_("routine-def-save", !nameOk || !hasSkill);
+}
+function setRoutineName(v) { S.routine.name = v; refreshRoutineDefValidity(); }
 function setRoutineExecFavorite(id) { S.routineExec.favoriteId = id; render(); }
-function setRoutineExecAirTime(v) { S.routineExec.airTime = v; render(); }
+/* タイム・固定係数が変わって更新が必要なのは目安Tスコアの1行だけ（保存ボタンはこの値に依存しない） */
+function refreshTScoreLine() {
+  var el = document.getElementById("tscore-line");
+  if (el) el.innerHTML = tScoreLineHtml();
+}
+function setRoutineExecAirTime(v) { S.routineExec.airTime = v; refreshTScoreLine(); }
 // もう一度同じボタンをタップすると選択解除(未選択に戻す)できるトグル式
 function setRoutineExecResult(v) { S.routineExec.result = (S.routineExec.result === v) ? null : v; render(); }
-function setRoutineExecNote(v) { S.routineExec.note = v; render(); }
+function setRoutineExecNote(v) { S.routineExec.note = v; }  /* 依存する表示がないので再描画不要 */
 
 // ---- Tスコア計算(草加市トランポリン協会「Time/Score Converter」https://1040tramp.com/score/ の計算式を採用) ----
 // FIGルール上は時間点(T)の換算式は存在せず滞空時間をそのまま得点とするだけだが(§17.2.1等)、
@@ -707,7 +738,7 @@ function tScoreFor(v) {
   return r ? r.score : null;
 }
 function setTScoreMode(mode) { S.tScoreMode = mode; render(); }
-function setTScoreFixedCoef(v) { S.tScoreFixedCoef = v; render(); }
+function setTScoreFixedCoef(v) { S.tScoreFixedCoef = v; refreshTScoreLine(); }
 function routineTotalDD(skillsArr) {
   return skillsArr.reduce(function (sum, row) {
     var sk = skillById(row.skillId);
@@ -1028,8 +1059,8 @@ function renderAirtimeCard() {
     '<div><span class="field-label">本数</span><div class="chip-grid two">' + repsChips + "</div></div>" +
     '<div><span class="num-field-label">タイム(秒)</span><input id="in-single-airtime" class="num-input" type="text" autocomplete="off" inputmode="decimal" step="0.01" min="0" placeholder="0.00" value="' + escAttr(S.airtime.airTime) + '" oninput="setAirtimeTime(this.value)"></div>' +
     '<div class="sub-label">選択した本数の連続ジャンプにかかった合計タイムをストップウォッチで計測して入力してください。技の記録とは別に、タイム計測だけを単独で保存できます(任意項目)。</div>' +
-    (blockReason ? '<div class="sub-label" style="color:' + COLORS.amber + ';">※' + blockReason + "</div>" : "") +
-    '<button class="save-btn airtime-save-btn' + (S.airtimeSavingFlash ? " flash" : "") + '"' + (!S.athleteId || !airtimeValid() ? " disabled" : "") + ' onclick="saveAirtimeEntry()">' + (S.airtimeSavingFlash ? iconCheck(16, "#052A1B") + "<span>保存しました</span>" : "<span>タイムを保存</span>") + "</button>" +
+    '<div class="sub-label" id="airtime-note" style="color:' + COLORS.amber + ';' + (blockReason ? "" : "display:none;") + '">' + (blockReason ? "※" + blockReason : "") + "</div>" +
+    '<button id="airtime-save" class="save-btn airtime-save-btn' + (S.airtimeSavingFlash ? " flash" : "") + '"' + (!S.athleteId || !airtimeValid() ? " disabled" : "") + ' onclick="saveAirtimeEntry()">' + (S.airtimeSavingFlash ? iconCheck(16, "#052A1B") + "<span>保存しました</span>" : "<span>タイムを保存</span>") + "</button>" +
     "</div>"
   );
 }
@@ -1073,6 +1104,19 @@ function renderFavoritesSection() {
 }
 
 /* ---- ルーティーン実施記録カード(トップ・登録済みルーティーンを選んでタイム/Tスコア/動画を記録) ---- */
+/* 目安Tスコアの1行。renderRoutineExecCard からも、入力中の部分更新からも同じものを使う */
+function tScoreLineHtml() {
+  var d = computeTScore(S.routineExec.airTime);
+  if (d) {
+    return '<div class="sub-label" style="color:' + COLORS.accent + ';margin-top:6px;">目安Tスコア: ' + d.score.toFixed(2) +
+      '点 <span style="color:#6E8779;">(' + d.sw.toFixed(2) + " × " + d.coef.toFixed(3) + " ・区分" + escHtml(d.category) + ")</span></div>";
+  }
+  if (S.tScoreMode === "fixed" && S.routineExec.airTime !== "") {
+    return '<div class="sub-label" style="color:' + COLORS.amber + ';margin-top:6px;">※固定係数を入力するとTスコアが表示されます</div>';
+  }
+  return "";
+}
+
 function renderRoutineExecCard() {
   var fav = S.routineExec.favoriteId ? FAVORITES.filter(function (f) { return f.id === S.routineExec.favoriteId; })[0] : null;
   var favOptions = FAVORITES.map(function (f) {
@@ -1113,9 +1157,7 @@ function renderRoutineExecCard() {
     (S.tScoreMode === "fixed"
       ? ('<div style="margin-top:8px;"><span class="num-field-label">固定係数</span><input id="in-tscore-fixed-coef" class="num-input" type="text" autocomplete="off" inputmode="decimal" step="0.001" placeholder="0.800" value="' + escAttr(S.tScoreFixedCoef) + '" oninput="setTScoreFixedCoef(this.value)"></div>')
       : "") +
-    (tDetail
-      ? ('<div class="sub-label" style="color:' + COLORS.accent + ';margin-top:6px;">目安Tスコア: ' + tDetail.score.toFixed(2) + "点 <span style=\"color:#6E8779;\">(" + tDetail.sw.toFixed(2) + " × " + tDetail.coef.toFixed(3) + " ・区分" + escHtml(tDetail.category) + ")</span></div>")
-      : (S.tScoreMode === "fixed" && S.routineExec.airTime !== "" ? '<div class="sub-label" style="color:' + COLORS.amber + ';margin-top:6px;">※固定係数を入力するとTスコアが表示されます</div>' : "")) +
+    '<div id="tscore-line">' + tScoreLineHtml() + "</div>" +
     '<div class="sub-label">ストップウォッチで計測した滞空時間(任意)。草加市トランポリン協会の代替スコア計算式(タイム×係数、https://1040tramp.com/score/)による目安のTスコアです(公式の採点ではありません)。</div>' +
     '<div style="margin-top:12px;"><span class="field-label">結果(必須)</span><div class="chip-grid two">' +
     '<button class="chip-btn' + (S.routineExec.result === "success" ? " active" : "") + '" onclick="setRoutineExecResult(\'success\')">成功</button>' +
@@ -1145,8 +1187,8 @@ function renderRoutineDefCard() {
     '<div class="tech-row-list">' + rowsHtml + "</div>" +
     '<button class="add-row-btn"' + (atMax ? " disabled" : "") + ' onclick="addRoutineSkillRow()">' + iconPlus(14, COLORS.accent) + "<span>技を追加 (" + S.routine.skills.length + "/" + MAX_ROUTINE_SKILLS + ")</span></button>" +
     '<div><span class="field-label">登録済みルーティーン</span><div style="margin-top:8px;">' + renderFavoritesSection() + "</div></div>" +
-    (blockReason ? '<div class="sub-label" style="color:' + COLORS.amber + ';">※' + blockReason + "</div>" : "") +
-    '<button class="save-btn' + (S.routineDefSavingFlash ? " flash" : "") + '"' + (!nameOk || !hasSkill ? " disabled" : "") + ' onclick="saveRoutineDef()">' + (S.routineDefSavingFlash ? iconCheck(16, "#052A1B") + "<span>登録しました</span>" : "<span>ルーティーンを登録</span>") + "</button>" +
+    '<div class="sub-label" id="routine-def-note" style="color:' + COLORS.amber + ';' + (blockReason ? "" : "display:none;") + '">' + (blockReason ? "※" + blockReason : "") + "</div>" +
+    '<button id="routine-def-save" class="save-btn' + (S.routineDefSavingFlash ? " flash" : "") + '"' + (!nameOk || !hasSkill ? " disabled" : "") + ' onclick="saveRoutineDef()">' + (S.routineDefSavingFlash ? iconCheck(16, "#052A1B") + "<span>登録しました</span>" : "<span>ルーティーンを登録</span>") + "</button>" +
     "</div>"
   );
 }
