@@ -66,6 +66,50 @@
   .rep-pick.soon { border-style: dashed; opacity: 0.45; cursor: default; }
   .chip-sub { display: block; font-size: 9px; font-weight: 400; opacity: .75; margin-top: 2px; }
 
+  /* 着床位置(水平移動)と動きの乱れ */
+  .rep-picks { flex-wrap: wrap; justify-content: flex-end; }
+  .rep-pick.tag.on { background: #E3C24B; border-color: #E3C24B; color: #2A2408; }
+  .rep-pick.land { font-family: ui-monospace, monospace; }
+  .rep-pick.land.set { color: #EAF3EC; }
+  .landing-modal-overlay { position: fixed; inset: 0; z-index: 110; overflow-y: auto; background: #0A1712; color: #EAF3EC; }
+  .landing-modal-box { max-width: 460px; margin: 0 auto; padding: 18px 16px 44px; display: flex; flex-direction: column; gap: 12px; }
+  .landing-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .landing-modal-title { font-size: 14px; font-weight: 700; }
+  .landing-modal-close { flex-shrink: 0; padding: 7px 14px; border-radius: 8px; background: #17301F; border: 1px solid #234534; color: #EAF3EC; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .landing-hint { font-size: 11.5px; line-height: 1.6; color: #B9D6C6; background: #10201A; border: 1px solid #234534; border-radius: 8px; padding: 8px 10px; }
+  .bed-svg { width: 100%; display: block; touch-action: manipulation; }
+  .landing-step-row { display: flex; align-items: center; gap: 8px; }
+  .landing-step-row .chip-btn { flex: 1; }
+  .landing-step-row .chip-btn[disabled] { opacity: .4; cursor: default; }
+  .landing-step-arrow { font-size: 13px; color: #6E8779; flex: 0 0 auto; }
+  .landing-tool-row { display: flex; gap: 8px; }
+  .landing-tool-row button { flex: 1; font-size: 11px; padding: 8px 4px; border-radius: 8px; background: #17301F; border: 1px solid #234534; color: #9FBBAA; cursor: pointer; font-family: inherit; }
+  .landing-row-list { display: flex; flex-direction: column; gap: 4px; }
+  .landing-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 8px 9px; border-radius: 8px; background: #10201A; border: 1px solid #234534; cursor: pointer; text-align: left; width: 100%; font-family: inherit; }
+  .landing-row.sel { border-color: #22C17E; background: #133220; }
+  .landing-row-n { font-size: 11px; color: #9FBBAA; flex: 0 0 auto; }
+  .landing-row-r { font-size: 11px; text-align: right; color: #9FBBAA; }
+  .landing-row-tags { display: block; font-size: 10px; color: #6E8779; margin-top: 3px; }
+  .landing-tag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .landing-tag-grid button { padding: 9px 6px; font-size: 11.5px; border-radius: 8px; border: 1px solid #234534; background: #17301F; color: #9FBBAA; cursor: pointer; font-family: inherit; }
+  .landing-tag-grid button.on { background: #E3C24B; border-color: #E3C24B; color: #2A2408; font-weight: 700; }
+  .landing-summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; background: #133220; border: 1px solid #22C17E; }
+  .landing-summary .label { font-size: 11px; color: #9FBBAA; }
+  .landing-summary .value { font-size: 18px; font-weight: 700; font-family: ui-monospace, monospace; color: #3EDB98; flex-shrink: 0; }
+  .landing-note { font-size: 10px; color: #6E8779; line-height: 1.6; }
+
+  /* ダッシュボード:着床位置(技別) */
+  .landing-rank { display: flex; flex-direction: column; gap: 10px; }
+  .lr-row { display: flex; gap: 10px; align-items: flex-start; }
+  .lr-name { font-size: 11px; width: 80px; flex-shrink: 0; color: #EAF3EC; line-height: 1.3; word-break: break-word; }
+  .lr-body { flex: 1; min-width: 0; }
+  .lr-bar { height: 10px; border-radius: 5px; background: #17301F; overflow: hidden; display: flex; }
+  .lr-bar i { height: 100%; display: block; }
+  .lr-bar i.center { background: #22C17E; }
+  .lr-bar i.far { background: #FF9645; }
+  .lr-vals { font-size: 10px; color: #9FBBAA; margin-top: 4px; font-family: ui-monospace, monospace; }
+  .lr-counts { font-size: 10px; color: #6E8779; margin-top: 12px; padding-top: 10px; border-top: 1px solid #234534; line-height: 1.7; }
+
   .select-wrap { position: relative; }
   .select-input { width: 100%; appearance: none; -webkit-appearance: none; border-radius: 8px; padding: 10px 32px 10px 12px; font-size: 14px; background: #17301F; border: 1px solid #234534; color: #EAF3EC; outline: none; }
   .select-chevron { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; }
@@ -281,6 +325,198 @@ function iconPlay(size, color) { return iconSvg('<polygon points="6 3 20 12 6 21
 function iconCheck(size, color) { return iconSvg('<polyline points="20 6 9 17 4 12"/>', size, color); }
 function iconStar(size, color) { return iconSvg('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>', size, color); }
 
+/* =========================================================
+   着床位置(水平移動)と動きの乱れ
+   ---------------------------------------------------------
+   H点(水平移動・最大10点)の改善に使うデータを貯めるための記録。
+   区画と減点は FIG Code of Points 2025-2028 第22章(22〜23ページ)の図に基づく。
+
+   正規化座標: ベッド中心が原点、範囲 -1.0〜1.0。+y=前方向、+x=入口側(右)。
+   台の大きさが違っても比較できるよう、必ず正規化して保存する。
+   図の向きは固定で、左=バスケットコート側 / 右=入口側 / 上=前。
+   記録者がベッドのどちら側に立っていても、常にこの向きで入力する。
+   ========================================================= */
+
+/* ベッド実寸(mm)。ちょうど 2:1 */
+var BED_LENGTH_MM = 4260;   /* 前後 */
+var BED_WIDTH_MM = 2130;    /* 左右 */
+
+/* ★★★ 区画のしきい値(中心から端までを 1.0 とした割合)。これはまだ仮の値。★★★
+   実物のベッドの区画線を実測して差し替えること。
+   本番のデータを貯め始める前に確定させる。あとから変えると、それ以前のデータの区画判定がずれる。
+
+   実測するのは、中央の十字から各線までの距離(mm)。
+     ZONE.A = (十字 → 前側の内側の線) / 2130    // 2130 = 4260/2 = 中心から前端まで
+     ZONE.B = (十字 → 前側の外側の線) / 2130
+     ZONE.C = (十字 → 左右の線)       / 1065    // 1065 = 2130/2 = 中心から右端まで
+
+   しきい値の定義はこの1か所だけ。ここを直せば、判定・ベッド図・集計のすべてに反映される。 */
+var ZONE = { A: 0.30, B: 0.52, C: 0.45 };
+
+/* 着床した区画の減点。区画は同心円ではなく格子で、段階は4つ。
+   0.1の緩衝帯は前後方向のみにあり、左右は中央帯を外れた時点で0.2。
+   前後と左右の両方に外れた四隅が0.3。
+
+     0.3 |      0.2      | 0.3
+     0.2 | 0.1 | 0.0 | 0.1 | 0.2     ← 横方向がベッドの前後
+     0.3 |      0.2      | 0.3
+
+   減点は「着床した区画」だけで決まる。踏切点からの移動距離では決まらない。
+   同じ0.2区画内で跳んで戻れば移動ゼロでも減点0.2。0.2区画から中央へ戻れば大きく動いても減点ゼロ。
+   移動ベクトル(踏切→着床)は別の値として保持し、減点計算には使わない。 */
+function deductionOf(p) {
+  var fore = Math.abs(p.y);   /* 前後(細かい5段階の軸) */
+  var lat = Math.abs(p.x);    /* 左右(3段階の軸) */
+  if (lat <= ZONE.C) {
+    if (fore <= ZONE.A) return 0.0;
+    if (fore <= ZONE.B) return 0.1;
+    return 0.2;
+  }
+  return fore <= ZONE.B ? 0.2 : 0.3;
+}
+
+/* 演技のH点。判定不能の本は分母からも分子からも除外する。
+   H点は「10技で10.0」という定義なので、この関数の値に意味があるのは技数がちょうど10のときだけ。
+   表示に使うときは landingScoreLabel() を通すこと(技数が10でなければ減点合計を出す)。 */
+function estimatedH(landings) {
+  var judged = (landings || []).filter(function (l) { return l && !l.undecidable && landingPointOf(l); });
+  return 10 - judged.reduce(function (s, l) { return s + deductionOf(landingPointOf(l)); }, 0);
+}
+
+/* H点が10.0になる技数。ルーティーンの技数がこれと違うときは推定Hを出さない */
+var LANDING_H_SKILL_COUNT = 10;
+
+var ZONE_COLORS = { "0.0": "#22C17E", "0.1": "#E3C24B", "0.2": "#FF9645", "0.3": "#FF6B5A" };
+/* ベッド図の塗りの濃さ。減点が重いほど濃くして、色だけでなく濃さでも区別できるようにする
+   (暗い地色の上だと 0.1 と 0.2 の色が近く見えるため) */
+var ZONE_FILL_OPACITY = { "0.1": 0.16, "0.2": 0.34, "0.3": 0.5 };
+var ZONE_NAMES = { "0.0": "中央(減点なし)", "0.1": "0.1の区画", "0.2": "0.2の区画", "0.3": "隅(0.3の区画)" };
+var UNDECIDABLE_COLOR = "#6E8779";
+/* 「大きく外れた」の定義。左右に中央帯を外れた、または前後で0.1の帯も外れた本 */
+var LANDING_FAR_DEDUCTION = 0.2;
+
+function zoneKey(p) { return deductionOf(p).toFixed(1); }
+function zoneColor(p) { return ZONE_COLORS[zoneKey(p)]; }
+function round3(n) { return Math.round(n * 1000) / 1000; }
+function round1(n) { return Math.round(n * 10) / 10; }
+
+/* 着床のしかた。仕様の landingType(feet/front/back/seat)をそのまま持つ。
+   足で着床する技は「より外側に着いた足」の位置(規則22.2)、
+   前落ち・背落ち・腰落ちは「腰の関節」の位置(規則22.3)をタップする。
+   当面は全技を「足で着床」として扱う(技ごとの着床タイプ登録は保留)ので、既定は feet。 */
+var LANDING_TYPES = [
+  { key: "feet", label: "足で着床", guide: "両足のうち、<b>より外側に着いた足</b>の位置をタップしてください" },
+  { key: "front", label: "前落ち", guide: "<b>腰の関節</b>がベッドに接した位置をタップしてください" },
+  { key: "back", label: "背落ち", guide: "<b>腰の関節</b>がベッドに接した位置をタップしてください" },
+  { key: "seat", label: "腰落ち", guide: "<b>腰の関節</b>がベッドに接した位置をタップしてください" }
+];
+function landingTypeGuide(key) {
+  var t = LANDING_TYPES.filter(function (x) { return x.key === key; })[0];
+  return (t || LANDING_TYPES[0]).guide;
+}
+
+/* 動きの乱れ(4対8種)。対になっている2つは同時に選べない。それ以外は複数選択可。
+   すべて任意で、何も選ばずに保存できる。強さの段階は持たない
+   (着床側に移動の大きさの情報があるため)。 */
+var TAG_PAIRS = [
+  ["縦回転オーバー", "縦回転ショート"],
+  ["捻りオーバー", "捻りショート"],
+  ["右肩下がり", "左肩下がり"],
+  ["踏切のタイミング早い", "踏切のタイミング遅い"]
+];
+var MAX_CAUSE_TAGS = 4;
+function partnerOf(t) {
+  for (var i = 0; i < TAG_PAIRS.length; i++) {
+    if (TAG_PAIRS[i][0] === t) return TAG_PAIRS[i][1];
+    if (TAG_PAIRS[i][1] === t) return TAG_PAIRS[i][0];
+  }
+  return null;
+}
+
+/* 位置の言い方。センチ単位の数値は出さない(タップにその精度はない)。表示は区画・方向のみ */
+function axisWord(v, lim, plus, minus) {
+  var a = Math.abs(v);
+  if (a <= lim) return "中央";
+  return a > lim + (1 - lim) * 0.45 ? (v > 0 ? plus : minus) + "へ大きく" : "やや" + (v > 0 ? plus : minus);
+}
+/* 踏切→着床の移動方向。表示専用で、減点の計算には一切使わない */
+function dir8(dx, dy) {
+  if (Math.abs(dx) < 0.06 && Math.abs(dy) < 0.06) return "ほぼ動かず";
+  var v = dy > 0.06 ? "前" : (dy < -0.06 ? "後" : "");
+  var h = dx > 0.06 ? "右" : (dx < -0.06 ? "左" : "");
+  return (v + h) || "ほぼ動かず";
+}
+
+/* ---- ベッド図の座標変換(viewBox 0 0 214 402。実寸 4260×2130 と同じ縦横比) ---- */
+function bedToSvg(p) { return { x: 107 + p.x * 94, y: 201 - p.y * 188 }; }
+function bedToNorm(sx, sy) { return { x: (sx - 107) / 94, y: (201 - sy) / 188 }; }
+
+/* 区画の色分け用の矩形。区画は格子なので、しきい値から矩形を組み立てれば図と判定が必ず一致する。
+   0.0(中央)は塗らずにベッドの地色のまま残す。 */
+function bedZoneRects() {
+  var A = ZONE.A, B = ZONE.B, C = ZONE.C, out = [];
+  function add(x0, x1, y0, y1, d) { out.push({ x0: x0, x1: x1, y0: y0, y1: y1, d: d }); }
+  add(-C, C, A, B, "0.1"); add(-C, C, -B, -A, "0.1");          /* 前後の0.1の帯 */
+  add(-C, C, B, 1, "0.2"); add(-C, C, -1, -B, "0.2");          /* 前後に大きく外れた */
+  add(C, 1, -B, B, "0.2"); add(-1, -C, -B, B, "0.2");          /* 左右に外れた */
+  add(C, 1, B, 1, "0.3"); add(C, 1, -1, -B, "0.3");            /* 四隅 */
+  add(-1, -C, B, 1, "0.3"); add(-1, -C, -1, -B, "0.3");
+  return out;
+}
+
+/* ---- 記録の集計 ----
+   未記録と判定不能は、どちらも「中央」に数えない。両方とも中央率の分母から外し、別々に数える。
+   (未記録を中央として集計すると、中央率が実態より高く出てしまう) */
+function landingStats(arr, count) {
+  var st = { total: count, recorded: 0, judged: 0, undecidable: 0, unrecorded: 0, center: 0, far: 0, deduction: 0 };
+  for (var i = 0; i < count; i++) {
+    var l = (arr || [])[i];
+    if (!l) { st.unrecorded++; continue; }
+    if (l.undecidable) { st.undecidable++; st.recorded++; continue; }   /* 判定不能は明示的な記録 */
+    var pt = landingPointOf(l);
+    if (!pt) { st.unrecorded++; continue; }
+    var d = deductionOf(pt);
+    st.recorded++;
+    st.judged++;
+    st.deduction += d;
+    if (d === 0) st.center++;
+    if (d >= LANDING_FAR_DEDUCTION) st.far++;
+  }
+  return st;
+}
+
+/* 推定H点は「ちょうど10技」のときだけ出す。
+   H点は10技で10.0という定義なので、8技や12技のルーティーンで「推定H 9.4」と出すと
+   意味の違う数字になってしまう。技数が10でないときは減点合計だけを出す。
+   算出値は必ず「推定H」と表記する。公式H点(電子計測または審判2名)とは別物なので
+   「公式H」というラベルは使わない。 */
+function landingScoreLabel(st) {
+  var ded = round1(st.deduction);
+  if (st.total === LANDING_H_SKILL_COUNT) {
+    return { label: "推定H(10技)", value: (10 - ded).toFixed(1) };
+  }
+  return { label: "減点合計(" + st.total + "技)", value: (ded > 0 ? "−" : "") + ded.toFixed(1) };
+}
+
+/* 保存された landings 列を配列にして返す。文字列(JSON)でも配列でも受ける */
+function entryLandings(e) {
+  var v = e && e.landings;
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  try {
+    var parsed = JSON.parse(String(v));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) { return []; }
+}
+/* 着床点を {x,y} で返す。保存済みの記録は [x,y]、入力中のドラフトは {x,y} なので両方を受ける */
+function landingPointOf(l) {
+  if (!l || !l.landing) return null;
+  if (Array.isArray(l.landing)) {
+    return l.landing.length === 2 ? { x: Number(l.landing[0]), y: Number(l.landing[1]) } : null;
+  }
+  return l.landing;
+}
+
 /* ---- 選手ロースター(実データはGoogleスプレッドシートから読み込む。初期は空) ---- */
 // セッションをまたいでも衝突しない一意ID(バックエンド保存用)
 function uid(prefix) {
@@ -367,7 +603,8 @@ function recentSkillIdsFor(athleteId) {
 /* 新しい単発記録の入力欄。技は「最後に使った技」を初期選択にする(同じ技を続けて記録することが多いため)。
    まだ記録が無い・選手未選択のときは従来どおり一番易しい前系の技に戻す。 */
 function emptySingleDraft(athleteId) {
-  var d = { family: "forward", skillId: firstSkillId("forward"), reps: 0, results: [], kakari: false, kakariTarget: null, note: "", videoSuccessName: null, videoSuccessUrl: null, videoFailName: null, videoFailUrl: null };
+  /* landings は results と同じ並びで、本数ぶんの着床記録を持つ(未記録の本は null のまま) */
+  var d = { family: "forward", skillId: firstSkillId("forward"), reps: 0, results: [], landings: [], kakari: false, kakariTarget: null, note: "", videoSuccessName: null, videoSuccessUrl: null, videoFailName: null, videoFailUrl: null };
   var last = recentSkillIdsFor(athleteId)[0];
   var sk = last ? skillById(last) : null;
   if (sk) { d.family = sk.family; d.skillId = sk.id; }
@@ -383,7 +620,8 @@ function emptyRoutineDraft() {
   return { name: "", skills: [emptyRoutineSkillRow()] };
 }
 function emptyRoutineExecDraft() {
-  return { favoriteId: "", airTime: "", result: null, note: "", videoSuccessName: null, videoSuccessUrl: null, videoFailName: null, videoFailUrl: null };
+  /* takeoff は1本目の踏切点(1回だけタップする)。2本目以降は前の技の着床点を踏切点として引き継ぐ */
+  return { favoriteId: "", airTime: "", result: null, note: "", takeoff: null, landings: [], videoSuccessName: null, videoSuccessUrl: null, videoFailName: null, videoFailUrl: null };
 }
 
 var S = {
@@ -417,6 +655,8 @@ var S = {
   singleDetailPeriod: "day",
   singleDetailBin: null,
   platformDetailModal: null,
+  landingModal: null,          /* 着床位置の入力画面 {scope:"single"|"routine", sel:何本目, tapMode:"take"|"land"} */
+  dashLandingMode: "single",   /* 着床位置カードの表示対象。単発とルーティーンは同じ集計に混ぜない */
   dashScope: "team",
   dashRankMode: "total",
   dashTechMode: "count",
@@ -534,9 +774,13 @@ function stepSingleReps(delta) {
   if (next > MAX_SINGLE_REPS) next = MAX_SINGLE_REPS;
   S.single.reps = next;
   if (!S.single.results) S.single.results = [];
+  if (!S.single.landings) S.single.landings = [];
   /* 減らしたぶんの成功/失敗は捨て、増やしたぶんは未選択で足す */
   if (S.single.results.length > next) S.single.results = S.single.results.slice(0, next);
   while (S.single.results.length < next) S.single.results.push(null);
+  /* 着床記録も本数に合わせて伸縮させる(増やしたぶんは未記録) */
+  if (S.single.landings.length > next) S.single.landings = S.single.landings.slice(0, next);
+  while (S.single.landings.length < next) S.single.landings.push(null);
   render();
 }
 /* ②成功/失敗の選択。同じものをもう一度押すと未選択に戻せる(任意入力のため)。 */
@@ -558,6 +802,262 @@ function encodeRepResults(results, reps) {
     var v = (results || [])[i];
     out += v === "success" ? "○" : (v === "fail" ? "×" : "-");
   }
+  return out;
+}
+
+/* ================= 着床位置の入力 =================
+   単発とルーティーンで同じ画面を使う。違いは踏切点の入れ方だけ。
+     単発      : 1本ごとに 踏切点 → 着床点 の2タップ。踏切点は中央に初期化しない(毎回タップさせる)
+     ルーティーン: 1本目の踏切点だけタップし、以降は前の技の着床点を踏切点として引き継ぐ
+
+   踏切点を中央固定にしない理由:
+   単発でも踏切位置は毎回中央とは限らず、同じ技を繰り返しても前回と同じ位置にならない。
+   かつH点の減点は着床位置だけで決まるため、踏切点座標は移動ベクトルの算出にしか使われない。
+   中央と仮定した座標は「粗いデータ」ではなく誤ったデータになる。 */
+
+/* 入力中の画面が扱う対象(本数・技・記録の配列)をまとめて返す。開けない状態なら null */
+function landingContext() {
+  var M = S.landingModal;
+  if (!M) return null;
+  if (M.scope === "single") {
+    var count = Number(S.single.reps) || 0;
+    if (count <= 0) return null;
+    var sk = skillById(S.single.skillId);
+    return {
+      scope: "single",
+      count: count,
+      arr: S.single.landings,
+      title: "着床位置(単発)",
+      labelAt: function (i) { return (i + 1) + "本目"; },
+      skillIdAt: function () { return S.single.skillId; },
+      subtitle: sk ? sk.name : ""
+    };
+  }
+  var fav = FAVORITES.filter(function (f) { return f.id === S.routineExec.favoriteId; })[0];
+  if (!fav || !fav.skillIds.length) return null;
+  return {
+    scope: "routine",
+    count: fav.skillIds.length,
+    arr: S.routineExec.landings,
+    title: "着床位置(ルーティーン)",
+    labelAt: function (i) {
+      var s = skillById(fav.skillIds[i]);
+      return (i + 1) + ". " + (s ? s.name : "(削除された技)");
+    },
+    skillIdAt: function (i) { return fav.skillIds[i] || null; },
+    subtitle: fav.name
+  };
+}
+
+/* i本目の記録オブジェクトを用意する(無ければ作る)。
+   位置・結果・動きの乱れは排他ではないので、どれか1つだけ入れた状態も成立する。 */
+function ensureLanding(ctx, i) {
+  if (!ctx.arr[i]) {
+    ctx.arr[i] = { takeoff: null, landing: null, landingType: "feet", undecidable: false, causeTags: [], result: "" };
+  }
+  return ctx.arr[i];
+}
+
+/* i本目の踏切点。ルーティーンでは連鎖から導出するので、1つ戻しても自動で正しくなる */
+function landingTakeoffFor(ctx, i) {
+  if (ctx.scope === "single") {
+    var l = ctx.arr[i];
+    return l ? l.takeoff : null;
+  }
+  if (i === 0) return S.routineExec.takeoff;
+  var prev = ctx.arr[i - 1];
+  return prev ? prev.landing : null;
+}
+/* 踏切点の出どころ。座標が無いときは inherited と言い張らずに unknown を返す。
+   途中の技が判定不能で着床座標を持たないと連鎖はそこで切れるが、
+   切れるのは「次の技の踏切点」だけで、次の技の着床位置と区画判定は普通に働く
+   (踏切点が無いぶん、移動ベクトルだけが出せない)。 */
+function landingTakeoffSource(ctx, i) {
+  if (!landingTakeoffFor(ctx, i)) return "unknown";
+  return (ctx.scope === "routine" && i > 0) ? "inherited" : "tapped";
+}
+
+/* その本を選んだときのタップ待ち状態。
+   ルーティーンの2本目以降は踏切点を前の技から引き継ぐので、踏切モードには絶対に入れない
+   (連鎖が切れているときに踏切モードへ落ちると、タップが演技の開始点を上書きしてしまう)。 */
+function landingTapModeFor(ctx, i) {
+  if (ctx.scope === "routine" && i > 0) return "land";
+  return landingTakeoffFor(ctx, i) ? "land" : "take";
+}
+
+function openLandingModal(scope, idx) {
+  S.landingModal = { scope: scope, sel: idx || 0, tapMode: "take" };
+  var ctx = landingContext();
+  if (!ctx) { S.landingModal = null; render(); return; }
+  if (S.landingModal.sel >= ctx.count) S.landingModal.sel = ctx.count - 1;
+  S.landingModal.tapMode = landingTapModeFor(ctx, S.landingModal.sel);
+  render();
+}
+function closeLandingModal() { S.landingModal = null; render(); }
+function setLandingTapMode(m) {
+  var ctx = landingContext();
+  if (!ctx) return;
+  /* ルーティーンで連鎖が始まったあとは、途中の踏切点を触らせない(前の技の着床点で決まるため) */
+  if (m === "take" && ctx.scope === "routine" && S.landingModal.sel > 0) return;
+  S.landingModal.tapMode = m;
+  render();
+}
+function selectLandingRow(i) {
+  var ctx = landingContext();
+  if (!ctx) return;
+  S.landingModal.sel = i;
+  S.landingModal.tapMode = landingTapModeFor(ctx, i);
+  render();
+}
+function setLandingType(key) {
+  var ctx = landingContext();
+  if (!ctx) return;
+  ensureLanding(ctx, S.landingModal.sel).landingType = key;
+  render();
+}
+function toggleLandingUndecidable() {
+  var ctx = landingContext();
+  if (!ctx) return;
+  var l = ensureLanding(ctx, S.landingModal.sel);
+  l.undecidable = !l.undecidable;
+  render();
+}
+/* 技の結果。単発は本数ぶんの成功/失敗(既存の S.single.results)をそのまま使い、
+   ルーティーンは技ごとの結果として landings 側に持つ(演技全体の結果 result 列とは別物)。 */
+function setLandingResult(v) {
+  var ctx = landingContext();
+  if (!ctx) return;
+  var i = S.landingModal.sel;
+  if (ctx.scope === "single") {
+    setSingleResult(i, v);
+    return;
+  }
+  var l = ensureLanding(ctx, i);
+  l.result = (l.result === v) ? "" : v;
+  render();
+}
+function landingResultAt(ctx, i) {
+  if (ctx.scope === "single") return (S.single.results || [])[i] || "";
+  var l = ctx.arr[i];
+  return l ? (l.result || "") : "";
+}
+function toggleLandingTag(t) {
+  var ctx = landingContext();
+  if (!ctx) return;
+  var tg = ensureLanding(ctx, S.landingModal.sel).causeTags;
+  var k = tg.indexOf(t);
+  if (k >= 0) { tg.splice(k, 1); render(); return; }
+  var pk = tg.indexOf(partnerOf(t));
+  if (pk >= 0) tg.splice(pk, 1);        /* 対になるタグは自動で外す */
+  if (tg.length >= MAX_CAUSE_TAGS) { render(); return; }
+  tg.push(t);
+  render();
+}
+
+/* ベッド図のタップ。render() が #root を作り直すので、インラインの onclick から呼ぶ */
+function landingBedTap(ev) {
+  var ctx = landingContext();
+  if (!ctx) return;
+  var svg = ev.currentTarget;
+  var r = svg.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  var src = (ev.touches && ev.touches[0]) ? ev.touches[0] : ev;
+  var p = bedToNorm((src.clientX - r.left) / r.width * 214, (src.clientY - r.top) / r.height * 402);
+  p.x = round3(Math.max(-1.05, Math.min(1.05, p.x)));
+  p.y = round3(Math.max(-1.05, Math.min(1.05, p.y)));
+  var M = S.landingModal, i = M.sel;
+  if (M.tapMode === "take") {
+    if (ctx.scope === "single") ensureLanding(ctx, i).takeoff = p;
+    else S.routineExec.takeoff = p;
+    M.tapMode = "land";
+    render();
+    return;
+  }
+  ensureLanding(ctx, i).landing = p;
+  /* タップすると自動で次の技へ進む。最後の1本では留まるので、もう一度タップすれば打ち直せる */
+  if (i + 1 < ctx.count) {
+    M.sel = i + 1;
+    M.tapMode = landingTapModeFor(ctx, M.sel);
+  }
+  render();
+}
+
+/* 位置だけを1つ戻す。成功/失敗と動きの乱れは別の層なので消さない */
+function landingUndo() {
+  var ctx = landingContext();
+  if (!ctx) return;
+  for (var i = ctx.count - 1; i >= 0; i--) {
+    if (ctx.arr[i] && ctx.arr[i].landing) {
+      ctx.arr[i].landing = null;
+      S.landingModal.sel = i;
+      S.landingModal.tapMode = landingTapModeFor(ctx, i);
+      render();
+      return;
+    }
+  }
+  /* 着床点が1つも無ければ、踏切点を消す */
+  if (ctx.scope === "routine") S.routineExec.takeoff = null;
+  else if (ctx.arr[S.landingModal.sel]) ctx.arr[S.landingModal.sel].takeoff = null;
+  S.landingModal.tapMode = "take";
+  render();
+}
+/* 位置だけを全部消す。成功/失敗と動きの乱れは残す(排他の層ではないため) */
+function landingResetPositions() {
+  var ctx = landingContext();
+  if (!ctx) return;
+  for (var i = 0; i < ctx.count; i++) {
+    if (ctx.arr[i]) { ctx.arr[i].takeoff = null; ctx.arr[i].landing = null; }
+  }
+  if (ctx.scope === "routine") S.routineExec.takeoff = null;
+  S.landingModal.sel = 0;
+  S.landingModal.tapMode = "take";
+  render();
+}
+
+/* 保存用のJSON文字列にする。座標は小数3桁(タップにそれ以上の精度はない)。
+   位置も判定不能も動きの乱れも無い本は null を入れ、本数ぶんの並びを崩さない
+   (未記録を空オブジェクトで埋めると「中央」として集計されかねないため)。
+   各要素に skillId を持たせるのは、登録ルーティーンが後から編集されても
+   記録側だけで技を判別できるようにするため。 */
+function serializeLandings(ctx) {
+  var out = [], any = false;
+  for (var i = 0; i < ctx.count; i++) {
+    var l = ctx.arr[i];
+    var hasAny = l && (l.landing || l.undecidable || (l.causeTags || []).length);
+    if (!hasAny) { out.push(null); continue; }
+    any = true;
+    var tk = landingTakeoffFor(ctx, i);
+    var o = {
+      takeoff: tk ? [round3(tk.x), round3(tk.y)] : null,
+      landing: l.landing ? [round3(l.landing.x), round3(l.landing.y)] : null,
+      takeoffSource: landingTakeoffSource(ctx, i),
+      landingType: l.landingType || "feet",
+      undecidable: !!l.undecidable,
+      result: landingResultAt(ctx, i),
+      causeTags: (l.causeTags || []).slice(),
+      skillId: ctx.skillIdAt(i) || null
+    };
+    if (ctx.scope === "routine") o.orderInRoutine = i + 1;
+    out.push(o);
+  }
+  return any ? JSON.stringify(out) : "";
+}
+/* landings 列に入れる値。必ず文字列で送る。
+   Apps Script 側の entryRowByHeaders_ は「値が配列なら join(',') する」分岐を持っているため
+   (ルーティーンの skills 列のための処理)、配列のまま送るとJSONではなく
+   カンマ連結された文字列になり、読み戻しでパースできなくなる。 */
+function landingsCell(v) {
+  if (v === null || v === undefined) return "";
+  return typeof v === "string" ? v : JSON.stringify(v);
+}
+
+/* 保存時に画面が閉じていても集計できるよう、その場で ctx を組み立てて直列化する */
+function serializeLandingsFor(scope) {
+  var keep = S.landingModal;
+  S.landingModal = { scope: scope, sel: 0, tapMode: "take" };
+  var ctx = landingContext();
+  var out = ctx ? serializeLandings(ctx) : "";
+  S.landingModal = keep;
   return out;
 }
 
@@ -584,6 +1084,9 @@ function saveSingleEntry() {
     repResults: encodeRepResults(S.single.results, Number(S.single.reps) || 0),
     success: countResults(S.single.results, "success"),
     fail: countResults(S.single.results, "fail"),
+    /* 着床位置・動きの乱れ。本数ぶんの並びで、未記録の本は null。
+       着床位置を理由に success/fail や reps を増減させることはしない(既存の成功率の指標を壊さないため) */
+    landings: landingsCell(serializeLandingsFor("single")),
     kakari: !!S.single.kakari,
     kakariTarget: S.single.kakari ? (S.single.kakariTarget || null) : null,
     note: (S.single.note || "").trim(),
@@ -678,7 +1181,13 @@ function refreshRoutineDefValidity() {
   setDisabled_("routine-def-save", !nameOk || !hasSkill);
 }
 function setRoutineName(v) { S.routine.name = v; refreshRoutineDefValidity(); }
-function setRoutineExecFavorite(id) { S.routineExec.favoriteId = id; render(); }
+function setRoutineExecFavorite(id) {
+  /* ルーティーンを変えると技の並びごと変わるので、入力途中の着床記録は持ち越さない
+     (持ち越すと、別の技の着床位置として保存されてしまう) */
+  if (S.routineExec.favoriteId !== id) { S.routineExec.landings = []; S.routineExec.takeoff = null; }
+  S.routineExec.favoriteId = id;
+  render();
+}
 /* タイム・固定係数が変わって更新が必要なのは目安Tスコアの1行だけ（保存ボタンはこの値に依存しない） */
 function refreshTScoreLine() {
   var el = document.getElementById("tscore-line");
@@ -811,7 +1320,8 @@ function saveRoutineExecEntry() {
     totalDD: routineTotalDD(fav.skillIds.map(function (sid) { return { skillId: sid }; })),
     airTime: S.routineExec.airTime !== "" ? Number(S.routineExec.airTime) : null,
     tScore: tScoreFor(S.routineExec.airTime),
-    result: S.routineExec.result || null,
+    result: S.routineExec.result || null,   /* 演技全体の結果。技ごとの成功/失敗は landings 側に入る */
+    landings: landingsCell(serializeLandingsFor("routine")),
     note: (S.routineExec.note || "").trim(),
     videoSuccessName: S.routineExec.videoSuccessName || null,
     videoSuccessUrl: S.routineExec.videoSuccessUrl || null,
@@ -978,6 +1488,7 @@ function confirmDeleteEntry(id) {
 function setDashScope(v) { S.dashScope = v; render(); }
 function setDashRankMode(v) { S.dashRankMode = v; render(); }
 function setDashTechMode(v) { S.dashTechMode = v; render(); }
+function setDashLandingMode(v) { S.dashLandingMode = v; render(); }
 
 function athleteName(id) {
   var a = ATHLETES.filter(function (x) { return x.id === id; })[0];
@@ -1015,10 +1526,25 @@ function renderRecentSkillChips() {
   return '<div><span class="field-label">よく使う技(最近記録した順)</span><div class="chip-wrap">' + chips + "</div></div>";
 }
 
-/* ②本数(0本可)と、本数ぶんの成功/失敗。③ヨレは仕様未定のため押せないプレースホルダー。 */
+/* 1本ぶんの「乱れ」「着床」ボタン。どちらも同じ着床位置の入力画面を開く。
+   技の結果・着床位置・動きの乱れは排他ではないので、3つとも同時に成立する。 */
+function renderLandingRepButtons(scope, i, l) {
+  var tags = l && l.causeTags ? l.causeTags.length : 0;
+  var tagBtn = '<button class="rep-pick tag' + (tags ? " on" : "") + '" onclick="openLandingModal(\'' + scope + "'," + i + ')">乱れ' + (tags ? " " + tags : "") + "</button>";
+  var label, color = "";
+  if (l && l.undecidable) { label = "不能"; color = UNDECIDABLE_COLOR; }
+  else if (l && l.landing) { label = deductionOf(l.landing).toFixed(1); color = zoneColor(l.landing); }
+  else { label = "着床"; }
+  var style = color ? ' style="color:' + color + ";border-color:" + color + '"' : "";
+  return tagBtn + '<button class="rep-pick land' + (color ? " set" : "") + '"' + style +
+    ' onclick="openLandingModal(\'' + scope + "'," + i + ')">' + label + "</button>";
+}
+
+/* ②本数(0本可)と、本数ぶんの成功/失敗・動きの乱れ・着床位置。 */
 function renderRepsBlock() {
   var reps = Number(S.single.reps) || 0;
   var results = S.single.results || [];
+  var landings = S.single.landings || [];
   var stepper =
     '<div class="reps-step">' +
     '<button class="reps-step-btn" onclick="stepSingleReps(-1)"' + (reps <= 0 ? " disabled" : "") + ">−</button>" +
@@ -1037,11 +1563,11 @@ function renderRepsBlock() {
         '<span class="rep-picks">' +
         '<button class="rep-pick ok' + (v === "success" ? " on" : "") + '" onclick="setSingleResult(' + i + ", 'success')\">成功</button>" +
         '<button class="rep-pick ng' + (v === "fail" ? " on" : "") + '" onclick="setSingleResult(' + i + ", 'fail')\">失敗</button>" +
-        '<button class="rep-pick soon" disabled>ヨレ</button>' +
+        renderLandingRepButtons("single", i, landings[i] || null) +
         "</span></div>";
     }
     rows = '<div class="rep-list">' + rows + "</div>" +
-      '<div class="sub-label">成功・失敗は選ばなくても保存できます。選んだものをもう一度押すと取り消せます。</div>';
+      '<div class="sub-label">成功・失敗は選ばなくても保存できます。選んだものをもう一度押すと取り消せます。<br>「着床」を押すとベッド図が開き、踏切点と着床点をタップして記録できます。成功・失敗、着床位置、動きの乱れは、それぞれ独立に記録されます(3つとも同時に成立します)。</div>';
   }
   return '<div><span class="field-label">本数</span>' + stepper + rows + "</div>";
 }
@@ -1145,6 +1671,27 @@ function tScoreLineHtml() {
   return "";
 }
 
+/* ルーティーン実施記録の着床位置ブロック。技ごとの成功/失敗と動きの乱れもここから入れる
+   (演技全体の結果は下の「結果(必須)」で、別に記録する) */
+function renderRoutineLandingBlock(fav) {
+  if (!fav || !fav.skillIds.length) return "";
+  var st = landingStats(S.routineExec.landings, fav.skillIds.length);
+  var sc = landingScoreLabel(st);
+  var summary = st.recorded
+    ? ('<div class="landing-summary" style="margin-top:8px;"><span class="label">判定できた ' + st.judged + "技／未記録 " + st.unrecorded + "技／判定不能 " + st.undecidable +
+      '技<br>中央 ' + st.center + "技・大きく外れた " + st.far + '技</span><span class="value">' + sc.value + "</span></div>" +
+      '<div class="sub-label">' + escHtml(sc.label) + (st.total === LANDING_H_SKILL_COUNT ? "" : "（技数が10でないため推定H点は出しません。H点は10技で10.0という定義です）") + "</div>")
+    : "";
+  return (
+    '<div style="margin-top:12px;"><span class="field-label">着床位置(任意・技ごと)</span>' +
+    '<button class="chip-btn" style="width:100%;" onclick="openLandingModal(\'routine\',0)">' +
+    (st.recorded ? "着床位置を編集する" : "着床位置を記録する") +
+    '<span class="chip-sub">1本目の踏切点をタップしたあと、各技の着床点を順にタップします</span></button>' +
+    summary +
+    "</div>"
+  );
+}
+
 function renderRoutineExecCard() {
   var fav = S.routineExec.favoriteId ? FAVORITES.filter(function (f) { return f.id === S.routineExec.favoriteId; })[0] : null;
   var favOptions = FAVORITES.map(function (f) {
@@ -1187,6 +1734,7 @@ function renderRoutineExecCard() {
       : "") +
     '<div id="tscore-line">' + tScoreLineHtml() + "</div>" +
     '<div class="sub-label">ストップウォッチで計測した滞空時間(任意)。草加市トランポリン協会の代替スコア計算式(タイム×係数、https://1040tramp.com/score/)による目安のTスコアです(公式の採点ではありません)。</div>' +
+    renderRoutineLandingBlock(fav) +
     '<div style="margin-top:12px;"><span class="field-label">結果(必須)</span><div class="chip-grid two">' +
     '<button class="chip-btn' + (S.routineExec.result === "success" ? " active" : "") + '" onclick="setRoutineExecResult(\'success\')">成功</button>' +
     '<button class="chip-btn amber' + (S.routineExec.result === "fail" ? " active" : "") + '" onclick="setRoutineExecResult(\'fail\')">失敗</button>' +
@@ -1263,6 +1811,166 @@ function renderVideoModal() {
     '<video src="' + S.videoModalUrl + '" controls autoplay playsinline></video>' +
     '<div class="video-modal-caption">' + escHtml(S.videoModalCaption) + "</div>" +
     '<button class="video-modal-close" onclick="closeVideoModal()">閉じる</button>' +
+    "</div></div>"
+  );
+}
+
+/* ---- 着床位置の入力画面 ---- */
+/* ベッド図。viewBox は実寸 4260×2130 と同じ縦横比。向きは固定で、
+   左=バスケットコート側 / 右=入口側 / 上=前。 */
+function renderBedSvg(ctx) {
+  var M = S.landingModal, sel = M.sel;
+  var s = '<rect x="0" y="0" width="214" height="402" rx="7" fill="#12291E"/>' +
+    '<rect x="13" y="13" width="188" height="376" fill="#16281F"/>';
+  bedZoneRects().forEach(function (r) {
+    var a = bedToSvg({ x: r.x0, y: r.y1 }), b = bedToSvg({ x: r.x1, y: r.y0 });
+    s += '<rect x="' + a.x.toFixed(1) + '" y="' + a.y.toFixed(1) + '" width="' + (b.x - a.x).toFixed(1) +
+      '" height="' + (b.y - a.y).toFixed(1) + '" fill="' + ZONE_COLORS[r.d] + '" fill-opacity="' + ZONE_FILL_OPACITY[r.d] + '"/>';
+  });
+  function vline(v) { var q = bedToSvg({ x: v, y: 0 }); return '<line x1="' + q.x.toFixed(1) + '" y1="13" x2="' + q.x.toFixed(1) + '" y2="389" stroke="#C9524A" stroke-width="1.5"/>'; }
+  function hline(v) { var q = bedToSvg({ x: 0, y: v }); return '<line x1="13" y1="' + q.y.toFixed(1) + '" x2="201" y2="' + q.y.toFixed(1) + '" stroke="#C9524A" stroke-width="1.5"/>'; }
+  s += hline(ZONE.A) + hline(-ZONE.A) + hline(ZONE.B) + hline(-ZONE.B) + vline(ZONE.C) + vline(-ZONE.C);
+  s += '<line x1="107" y1="187" x2="107" y2="215" stroke="#C9524A" stroke-width="1.8"/>' +
+    '<line x1="93" y1="201" x2="121" y2="201" stroke="#C9524A" stroke-width="1.8"/>' +
+    '<text x="107" y="9.5" fill="#9FBBAA" font-size="9" text-anchor="middle">前</text>' +
+    '<text x="107" y="399" fill="#9FBBAA" font-size="9" text-anchor="middle">後</text>' +
+    '<text x="7.5" y="201" fill="#6E8779" font-size="7" text-anchor="middle" transform="rotate(-90 7.5 201)">バスケットコート側</text>' +
+    '<text x="206.5" y="201" fill="#6E8779" font-size="7" text-anchor="middle" transform="rotate(90 206.5 201)">入口側</text>';
+
+  /* 踏切→着床の線。ルーティーンは前の技の着床点が次の踏切点になるので、全体が1本の連鎖になる。
+     単発は本ごとに独立した踏切点を持つので、選択中の1本だけを線で結ぶ。 */
+  function seg(a, b, opacity) {
+    var p = bedToSvg(a), q = bedToSvg(b);
+    return '<line x1="' + p.x.toFixed(1) + '" y1="' + p.y.toFixed(1) + '" x2="' + q.x.toFixed(1) + '" y2="' + q.y.toFixed(1) +
+      '" stroke="#EAF3EC" stroke-width="2" stroke-linecap="round" opacity="' + opacity + '"/>';
+  }
+  if (ctx.scope === "routine") {
+    for (var i = 0; i < ctx.count; i++) {
+      var from = landingTakeoffFor(ctx, i), to = ctx.arr[i] ? ctx.arr[i].landing : null;
+      if (from && to) s += seg(from, to, i === sel ? 0.85 : 0.4);
+    }
+  } else {
+    var st0 = landingTakeoffFor(ctx, sel), en0 = ctx.arr[sel] ? ctx.arr[sel].landing : null;
+    if (st0 && en0) s += seg(st0, en0, 0.85);
+  }
+
+  /* 踏切点 */
+  var tk = landingTakeoffFor(ctx, sel);
+  if (tk) {
+    var t = bedToSvg(tk);
+    s += '<circle cx="' + t.x.toFixed(1) + '" cy="' + t.y.toFixed(1) + '" r="7.5" fill="#0A1712" stroke="#EAF3EC" stroke-width="' + (M.tapMode === "take" ? 3 : 2) + '"/>' +
+      '<text x="' + t.x.toFixed(1) + '" y="' + (t.y + 3).toFixed(1) + '" font-size="8" fill="#EAF3EC" text-anchor="middle" font-weight="700">踏</text>';
+  }
+  /* 着床点 */
+  for (var j = 0; j < ctx.count; j++) {
+    var lj = ctx.arr[j];
+    if (!lj || !lj.landing) continue;
+    if (ctx.scope === "single" && j !== sel && !lj.landing) continue;
+    var q2 = bedToSvg(lj.landing);
+    var col = lj.undecidable ? UNDECIDABLE_COLOR : zoneColor(lj.landing);
+    var isSel = j === sel;
+    s += '<circle cx="' + q2.x.toFixed(1) + '" cy="' + q2.y.toFixed(1) + '" r="' + (isSel ? 12 : 10.5) +
+      '" fill="' + col + '" fill-opacity="' + (isSel ? 1 : 0.75) + '" stroke="' + (isSel ? "#EAF3EC" : "#0A1712") + '" stroke-width="' + (isSel ? 3 : 2) + '"/>' +
+      '<text x="' + q2.x.toFixed(1) + '" y="' + (q2.y + 4).toFixed(1) + '" font-size="11" font-weight="700" fill="#0A1712" text-anchor="middle">' + (j + 1) + "</text>";
+  }
+  return '<svg class="bed-svg" viewBox="0 0 214 402" preserveAspectRatio="xMidYMid meet" onclick="landingBedTap(event)">' + s + "</svg>";
+}
+
+function renderLandingModal() {
+  if (!S.landingModal) return "";
+  var ctx = landingContext();
+  if (!ctx) return "";
+  var M = S.landingModal, i = M.sel, l = ctx.arr[i] || null;
+  var st = landingStats(ctx.arr, ctx.count);
+  var unit = ctx.scope === "routine" ? "技" : "本";
+
+  var typeChips = LANDING_TYPES.map(function (t) {
+    var on = (l ? (l.landingType || "feet") : "feet") === t.key;
+    return '<button class="chip-btn' + (on ? " active" : "") + '" style="font-size:11px;" onclick="setLandingType(\'' + t.key + '\')">' + t.label + "</button>";
+  }).join("");
+
+  var takeDisabled = ctx.scope === "routine" && i > 0;
+  var stepRow =
+    '<div class="landing-step-row">' +
+    '<button class="chip-btn' + (M.tapMode === "take" ? " active" : "") + '"' + (takeDisabled ? " disabled" : "") + ' onclick="setLandingTapMode(\'take\')">踏切点</button>' +
+    '<span class="landing-step-arrow">▶</span>' +
+    '<button class="chip-btn' + (M.tapMode === "land" ? " active" : "") + '" onclick="setLandingTapMode(\'land\')">着床点</button>' +
+    "</div>";
+
+  var guide = landingTypeGuide(l ? l.landingType : "feet");
+  var hint;
+  if (M.tapMode === "take") {
+    hint = ctx.scope === "routine"
+      ? "1本目の踏切った地点をタップしてください(2本目以降は前の技の着床点を踏切点として引き継ぎます)"
+      : escHtml(ctx.labelAt(i)) + "：まず踏切った地点をタップしてください";
+  } else {
+    hint = escHtml(ctx.labelAt(i)) + "：" + guide;
+  }
+
+  var rows = "";
+  for (var k = 0; k < ctx.count; k++) {
+    var lk = ctx.arr[k], r = landingResultAt(ctx, k);
+    var badge = r === "success" ? '<span style="color:#22C17E;font-weight:700">成功</span>'
+      : r === "fail" ? '<span style="color:#FF9645;font-weight:700">失敗</span>'
+        : '<span style="color:#4A5F52">未選択</span>';
+    var zone, zcol = "#6E8779";
+    if (lk && lk.undecidable) { zone = "判定不能"; }
+    else if (lk && lk.landing) { zone = "−" + deductionOf(lk.landing).toFixed(1); zcol = zoneColor(lk.landing); }
+    else { zone = "未記録"; }
+    var moveTxt = "";
+    var from2 = landingTakeoffFor(ctx, k);
+    if (lk && lk.landing && from2) moveTxt = '　<span style="color:#6E8779">' + dir8(lk.landing.x - from2.x, lk.landing.y - from2.y) + "</span>";
+    rows += '<button class="landing-row' + (k === i ? " sel" : "") + '" onclick="selectLandingRow(' + k + ')">' +
+      '<span class="landing-row-n">' + escHtml(ctx.labelAt(k)) + "</span>" +
+      '<span class="landing-row-r">' + badge + '　<span style="color:' + zcol + ';font-weight:700">' + zone + "</span>" + moveTxt +
+      ((lk && lk.causeTags && lk.causeTags.length) ? '<span class="landing-row-tags">' + escHtml(lk.causeTags.join("、")) + "</span>" : "") +
+      "</span></button>";
+  }
+
+  var curResult = landingResultAt(ctx, i);
+  var tagBtns = "";
+  TAG_PAIRS.forEach(function (pr) {
+    pr.forEach(function (t) {
+      var on = l && l.causeTags && l.causeTags.indexOf(t) >= 0;
+      tagBtns += '<button class="' + (on ? "on" : "") + '" onclick="toggleLandingTag(\'' + escAttr(t) + '\')">' + escHtml(t) + "</button>";
+    });
+  });
+
+  /* 推定H点は「ちょうど10技」のときだけ。単発は演技ではないのでH点を出さない */
+  var scoreHtml = "";
+  if (ctx.scope === "routine") {
+    var sc = landingScoreLabel(st);
+    scoreHtml = '<div class="landing-summary"><span class="label">' + sc.label + "</span><span class=\"value\">" + sc.value + "</span></div>";
+  } else {
+    scoreHtml = '<div class="landing-summary"><span class="label">中央だった本数</span><span class="value">' + st.center + "／" + st.judged + "</span></div>";
+  }
+
+  return (
+    '<div class="landing-modal-overlay"><div class="landing-modal-box">' +
+    '<div class="landing-modal-head"><div><div class="landing-modal-title">' + escHtml(ctx.title) + "</div>" +
+    '<div class="sub-label">' + escHtml(ctx.subtitle) + "</div></div>" +
+    '<button class="landing-modal-close" onclick="closeLandingModal()">閉じる</button></div>' +
+    '<div><span class="field-label">① 着床のしかた</span><div class="chip-grid four">' + typeChips + "</div></div>" +
+    '<div><span class="field-label">② 位置を入れる(踏切 → 着床の順)</span>' + stepRow + "</div>" +
+    '<div class="landing-hint">' + hint + "</div>" +
+    renderBedSvg(ctx) +
+    '<div class="landing-tool-row"><button onclick="landingUndo()">位置を1つ戻す</button><button onclick="landingResetPositions()">位置をやり直す</button></div>' +
+    scoreHtml +
+    '<div class="landing-note">判定できた ' + st.judged + unit + "／未記録 " + st.unrecorded + unit + "／判定不能 " + st.undecidable + unit + "</div>" +
+    '<div><span class="field-label">③ ' + escHtml(ctx.labelAt(i)) + "の結果と動きの乱れ</span>" +
+    '<div class="chip-grid two"><button class="chip-btn' + (curResult === "success" ? " active" : "") + '" onclick="setLandingResult(\'success\')">成功</button>' +
+    '<button class="chip-btn amber' + (curResult === "fail" ? " active" : "") + '" onclick="setLandingResult(\'fail\')">失敗</button></div>' +
+    '<div style="margin-top:8px;"><button class="chip-btn' + (l && l.undecidable ? " active" : "") + '" style="width:100%;" onclick="toggleLandingUndecidable()">着床位置は判定不能</button></div>' +
+    '<div class="sub-label">区画線上で判別がつかない、両足が別の区画に分かれた、映像で確認できない場合は「判定不能」として記録してください。無理にどちらかへ寄せないでください。</div>' +
+    "</div>" +
+    '<div><span class="field-label">動きの乱れ(任意・上下に並んだ対は同時に選べません)</span>' +
+    '<div class="landing-tag-grid">' + tagBtns + "</div>" +
+    '<div class="sub-label">特に目立ったものを選んでください。何も選ばずに保存できます。</div></div>' +
+    '<div class="landing-note">※ 減点値と区画の並びは FIG Code of Points 2025-2028 第22章に基づいています。手でタップした位置から算出しているため<b>推定値</b>で、公式のH点(電子計測または審判2名による判定)とは別物です。<br>' +
+    "※ 減点は<b>着床した区画</b>で決まり、移動した距離では決まりません(同じ区画内で跳んで戻っても減点は残ります)。<br>" +
+    "※ 図の向きは固定です。左=バスケットコート側／右=入口側／上=前。記録者がどちら側に立ってもこの向きで入力します。<br>" +
+    "※ 区画線の位置はまだ仮の値で、実測後に確定します。</div>" +
+    '<button class="save-btn" onclick="closeLandingModal()">入力を終える</button>' +
     "</div></div>"
   );
 }
@@ -1373,6 +2081,27 @@ function renderEntryCard(e) {
       (e.result === "success" ? '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';border-color:#24603F;">成功</span>' : "") +
       (e.result === "fail" ? '<span class="recent-tech-chip" style="color:' + COLORS.amber + ';border-color:#5A3B1E;">失敗</span>' : "");
   }
+  /* 着床位置の記録があれば、保存された内容を1行で確認できるようにする */
+  var landingLine = "";
+  if (e.mode === "single" || e.mode === "routine") {
+    var lArr = entryLandings(e);
+    if (lArr.length) {
+      var lst = landingStats(lArr, e.mode === "single" ? entryCount(e) : (e.skills || []).length);
+      if (lst.recorded) {
+        var lUnit = e.mode === "routine" ? "技" : "本";
+        var scoreTxt = "";
+        if (e.mode === "routine") {
+          var lsc = landingScoreLabel(lst);
+          scoreTxt = " ・" + lsc.label + " " + lsc.value;
+        }
+        landingLine = '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';border-color:#24603F;">着床 中央' + lst.center + "／判定" + lst.judged + lUnit +
+          (lst.far ? " ・大きく外れた" + lst.far + lUnit : "") +
+          (lst.undecidable ? " ・判定不能" + lst.undecidable + lUnit : "") +
+          escHtml(scoreTxt) + "</span>";
+      }
+    }
+  }
+  content += landingLine;
   var caption = e.mode === "routine" ? (e.routineName || "ルーティーン") : (e.mode === "airtime" ? "タイム計測" : skillLabelForEntry(e));
   var videoBtns = "";
   if (e.videoSuccessUrl) videoBtns += '<button class="recent-video-btn" onclick="openVideoModal(\'' + e.videoSuccessUrl + "','" + escAttr(caption + "(成功)") + "')\">" + iconPlay(9, COLORS.accent) + "成功</button>";
@@ -1967,7 +2696,76 @@ function renderAthleteDashboard(athleteId) {
 
   return (
     '<div class="card raised" style="text-align:center;"><div style="font-size:15px;font-weight:700;">' + escHtml(athlete.name) + "</div></div>" +
-    statsHtml + trendChart + famChart + platChart + usageChart + renderRecentSection(athleteId)
+    statsHtml + trendChart + famChart + platChart + usageChart + renderLandingDashCard(es) + renderRecentSection(athleteId)
+  );
+}
+
+/* ---- ダッシュボードの「着床位置(技別)」カード ----
+   技別の中央率と大きく外れた率のみ(第1段階のスコープ)。
+   単発とルーティーンは同じ集計に混ぜない。
+   未記録と判定不能は中央率の分母から外し、それぞれ別に数えて表示する
+   (未記録を中央として集計すると、中央率が実態より高く出てしまう)。 */
+function landingUsageFor(entries, scope) {
+  var map = {}, totals = { judged: 0, unrecorded: 0, undecidable: 0, reps: 0 };
+  entries.forEach(function (e) {
+    if (e.mode !== scope) return;
+    var arr = entryLandings(e);
+    var count = scope === "single" ? entryCount(e) : (e.skills || []).length;
+    for (var i = 0; i < count; i++) {
+      var l = arr[i] || null;
+      /* 技は記録された landing の skillId を優先する。
+         登録ルーティーンは後から編集できるので、並び順で引き当てると別の技に紐づいてしまう。
+         skillId を持たない記録だけ、保存時に固定された技の並びで補う。 */
+      var sid = (l && l.skillId) ? l.skillId : (scope === "single" ? e.skillId : (e.skills || [])[i]);
+      var sk = skillById(sid);
+      if (!sk) continue;
+      var u = map[sk.name] || (map[sk.name] = { name: sk.name, reps: 0, judged: 0, center: 0, far: 0, undecidable: 0, unrecorded: 0 });
+      u.reps++;
+      totals.reps++;
+      if (l && l.undecidable) { u.undecidable++; totals.undecidable++; continue; }
+      var pt = landingPointOf(l);
+      if (!pt) { u.unrecorded++; totals.unrecorded++; continue; }
+      var d = deductionOf(pt);
+      u.judged++;
+      totals.judged++;
+      if (d === 0) u.center++;
+      if (d >= LANDING_FAR_DEDUCTION) u.far++;
+    }
+  });
+  return { items: Object.keys(map).map(function (k) { return map[k]; }), totals: totals };
+}
+
+function renderLandingDashCard(entries) {
+  var scope = S.dashLandingMode === "routine" ? "routine" : "single";
+  var res = landingUsageFor(entries, scope);
+  var unit = scope === "routine" ? "技" : "本";
+  var items = res.items.filter(function (u) { return u.judged > 0; })
+    .sort(function (a, b) { return b.judged - a.judged; })
+    .slice(0, 8);
+  var body;
+  if (!items.length) {
+    body = '<div class="empty-card">着床位置の記録がまだありません</div>';
+  } else {
+    body = '<div class="landing-rank">' + items.map(function (u) {
+      var centerPct = Math.round(u.center / u.judged * 100);
+      var farPct = Math.round(u.far / u.judged * 100);
+      return '<div class="lr-row"><div class="lr-name">' + escHtml(u.name) + "</div>" +
+        '<div class="lr-body"><div class="lr-bar"><i class="center" style="width:' + centerPct + '%"></i>' +
+        '<i class="far" style="width:' + farPct + '%"></i></div>' +
+        '<div class="lr-vals">中央 ' + centerPct + "% ・大きく外れた " + farPct + "% ・判定 " + u.judged + unit + "</div></div></div>";
+    }).join("") + "</div>";
+  }
+  var t = res.totals;
+  var recordedPct = t.reps > 0 ? Math.round((t.reps - t.unrecorded) / t.reps * 100) : 0;
+  return (
+    '<div class="chart-card"><div class="chart-title-row"><span>着床位置(技別)</span><div class="mini-toggle">' +
+    '<button class="' + (scope === "single" ? "active" : "") + '" onclick="setDashLandingMode(\'single\')">単発</button>' +
+    '<button class="' + (scope === "routine" ? "active" : "") + '" onclick="setDashLandingMode(\'routine\')">ルーティーン</button>' +
+    "</div></div>" + body +
+    '<div class="lr-counts">判定できた ' + t.judged + unit + "／未記録 " + t.unrecorded + unit + "／判定不能 " + t.undecidable + unit +
+    "（対象 " + t.reps + unit + "・着床位置を入力できた割合 " + recordedPct + "%）<br>" +
+    "中央率と大きく外れた率の分母は「判定できた" + unit + "数」です。未記録と判定不能は分母に入れていません。" +
+    "「大きく外れた」は減点0.2以上（左右に中央帯を外れた、または前後で0.1の帯も外れた）の着床です。</div></div>"
   );
 }
 
@@ -2018,7 +2816,8 @@ function renderApp() {
     renderJumpHistoryModal() +
     renderRoutineDetailModal() +
     renderSingleDetailModal() +
-    renderPlatformDetailModal()
+    renderPlatformDetailModal() +
+    renderLandingModal()
   );
 }
 
@@ -2052,7 +2851,15 @@ function render() {
     focusId = active.id;
     try { selStart = active.selectionStart; selEnd = active.selectionEnd; } catch (e) {}
   }
+  /* 着床位置の入力画面は自前でスクロールする要素なので、作り直すと先頭に戻ってしまう。
+     一覧の下の方の技をタップしたときに画面が飛ばないよう、スクロール位置を持ち越す。 */
+  var landingEl = document.querySelector(".landing-modal-overlay");
+  var landingScroll = landingEl ? landingEl.scrollTop : null;
   root.innerHTML = renderApp();
+  if (landingScroll !== null) {
+    var landingEl2 = document.querySelector(".landing-modal-overlay");
+    if (landingEl2) landingEl2.scrollTop = landingScroll;
+  }
   if (focusId) {
     var el = document.getElementById(focusId);
     if (el) {
