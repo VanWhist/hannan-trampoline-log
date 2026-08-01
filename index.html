@@ -309,6 +309,7 @@ function loadAll() {
       ATHLETES = (data.athletes || []).slice().sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
       FAVORITES = (data.favorites || []).slice().sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
       ENTRIES = (data.entries || []).slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+      restoreSavedAthlete();   // 前回選んだ選手を選択状態に戻す
       BACKEND_READY = true;
       backendError = null;
       render();
@@ -451,8 +452,33 @@ function selectTab(tab) {
   if (tab === "dashboard" && S.athleteId) { S.dashScope = S.athleteId; }
   render();
 }
+/* 選んだ選手はこの端末に覚えておき、次に開いたときも選ばれた状態にする。
+   端末ごとに独立しているので、部員それぞれが自分の選手を選び直さずに使える。
+   ※先頭の選手を自動で選ぶ方式にはしていない。部員が増えたときに
+     別人の記録として保存してしまう事故を避けるため、あくまで「前回自分が選んだ選手」だけを復元する。 */
+var ATHLETE_STORAGE_KEY = "hannan-trampoline-log:lastAthleteId";
+function loadSavedAthleteId() {
+  try { return localStorage.getItem(ATHLETE_STORAGE_KEY) || null; } catch (e) { return null; }
+}
+function saveAthleteId(id) {
+  try {
+    if (id) localStorage.setItem(ATHLETE_STORAGE_KEY, id);
+    else localStorage.removeItem(ATHLETE_STORAGE_KEY);
+  } catch (e) { /* プライベートブラウズ等で保存できなくても動作は妨げない */ }
+}
+/* 読み込み完了時に、前回選んだ選手がまだ在籍していれば選択状態を復元する */
+function restoreSavedAthlete() {
+  var saved = loadSavedAthleteId();
+  if (!saved) return;
+  var stillExists = ATHLETES.some(function (a) { return a.id === saved; });
+  if (!stillExists) { saveAthleteId(null); return; }   // 削除された選手なら覚えを捨てる
+  S.athleteId = saved;
+  S.single = emptySingleDraft(S.athleteId);
+}
+
 function selectAthlete(id) {
   S.athleteId = id || null;
+  saveAthleteId(S.athleteId);
   /* 選手を切り替えたら、その選手が最後に使った技を初期選択にし直す(入力途中の本数は持ち越さない) */
   S.single = emptySingleDraft(S.athleteId);
   render();
@@ -472,6 +498,8 @@ function confirmAddAthlete() {
   ATHLETES.push({ id: id, name: name, createdAt: createdAt });
   S.addingAthlete = false;
   S.athleteId = id;
+  saveAthleteId(id);
+  S.single = emptySingleDraft(id);
   render();
   syncToBackend({ type: "addAthlete", id: id, name: name, createdAt: createdAt }, "選手の追加");
 }
