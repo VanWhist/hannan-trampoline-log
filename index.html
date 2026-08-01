@@ -42,6 +42,28 @@
   .chip-btn { padding: 10px 4px; border-radius: 8px; font-size: 12px; font-weight: 600; text-align: center; line-height: 1.25; cursor: pointer; background: #17301F; color: #EAF3EC; border: 1px solid #234534; }
   .chip-btn.active { background: #22C17E; color: #052A1B; border-color: #22C17E; }
   .chip-btn.amber.active { background: #FF9645; color: #2A1608; border-color: #FF9645; }
+
+  /* よく使う技(最近記録した技のクイック選択) */
+  .chip-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip-btn.recent-skill-chip { padding: 7px 11px; font-size: 11px; text-align: left; flex: 0 0 auto; max-width: 100%; }
+
+  /* 本数のステッパー */
+  .reps-step { display: flex; align-items: center; gap: 14px; }
+  .reps-step-btn { width: 42px; height: 42px; border-radius: 8px; border: 1px solid #234534; background: #17301F; color: #EAF3EC; font-size: 20px; font-weight: 700; line-height: 1; cursor: pointer; font-family: inherit; }
+  .reps-step-btn:disabled { color: #4A5F52; cursor: default; }
+  .reps-step-num { font-size: 22px; font-weight: 700; min-width: 32px; text-align: center; color: #EAF3EC; }
+  .reps-step-num.zero { color: #6E8779; }
+  .reps-step-unit { font-size: 12px; color: #6E8779; }
+
+  /* 本数ぶんの成功/失敗 */
+  .rep-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .rep-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid #234534; border-radius: 8px; padding: 7px 9px; background: #10201A; }
+  .rep-idx { font-size: 12px; color: #6E8779; white-space: nowrap; }
+  .rep-picks { display: flex; gap: 5px; }
+  .rep-pick { font-size: 12px; font-weight: 700; font-family: inherit; padding: 6px 11px; border-radius: 8px; border: 1px solid #234534; background: #17301F; color: #6E8779; cursor: pointer; }
+  .rep-pick.ok.on { background: #22C17E; border-color: #22C17E; color: #052A1B; }
+  .rep-pick.ng.on { background: #FF9645; border-color: #FF9645; color: #2A1608; }
+  .rep-pick.soon { border-style: dashed; opacity: 0.45; cursor: default; }
   .chip-sub { display: block; font-size: 9px; font-weight: 400; opacity: .75; margin-top: 2px; }
 
   .select-wrap { position: relative; }
@@ -322,8 +344,33 @@ function syncToBackend(payload, label) {
 
 
 /* ---- app state ---- */
-function emptySingleDraft() {
-  return { family: "forward", skillId: firstSkillId("forward"), success: "", fail: "", kakari: false, kakariTarget: null, note: "", videoSuccessName: null, videoSuccessUrl: null, videoFailName: null, videoFailUrl: null };
+/* 1回の記録で受け付ける本数の上限(誤操作・不正値でデータが荒れるのを防ぐ保険) */
+var MAX_SINGLE_REPS = 100;
+/* よく使う技のチップに出す数 */
+var RECENT_SKILL_MAX = 5;
+
+/* 選手が最近記録した技(単発)を新しい順・重複なしで返す。まだ記録が無ければ空配列。 */
+function recentSkillIdsFor(athleteId) {
+  if (!athleteId) return [];
+  var seen = {}, out = [];
+  for (var i = 0; i < ENTRIES.length && out.length < RECENT_SKILL_MAX; i++) {
+    var e = ENTRIES[i];
+    if (e.mode !== "single" || e.athleteId !== athleteId || !e.skillId) continue;
+    if (seen[e.skillId] || !skillById(e.skillId)) continue;
+    seen[e.skillId] = true;
+    out.push(e.skillId);
+  }
+  return out;
+}
+
+/* 新しい単発記録の入力欄。技は「最後に使った技」を初期選択にする(同じ技を続けて記録することが多いため)。
+   まだ記録が無い・選手未選択のときは従来どおり一番易しい前系の技に戻す。 */
+function emptySingleDraft(athleteId) {
+  var d = { family: "forward", skillId: firstSkillId("forward"), reps: 0, results: [], kakari: false, kakariTarget: null, note: "", videoSuccessName: null, videoSuccessUrl: null, videoFailName: null, videoFailUrl: null };
+  var last = recentSkillIdsFor(athleteId)[0];
+  var sk = last ? skillById(last) : null;
+  if (sk) { d.family = sk.family; d.skillId = sk.id; }
+  return d;
 }
 function emptyAirtimeDraft() {
   return { airTime: "", airTimeReps: "10" };
@@ -404,7 +451,12 @@ function selectTab(tab) {
   if (tab === "dashboard" && S.athleteId) { S.dashScope = S.athleteId; }
   render();
 }
-function selectAthlete(id) { S.athleteId = id || null; render(); }
+function selectAthlete(id) {
+  S.athleteId = id || null;
+  /* 選手を切り替えたら、その選手が最後に使った技を初期選択にし直す(入力途中の本数は持ち越さない) */
+  S.single = emptySingleDraft(S.athleteId);
+  render();
+}
 function setDate(v) { S.date = v; render(); }
 function selectPlatform(p) { S.platform = p; render(); }
 function selectMode(m) { S.mode = m; render(); }
@@ -438,12 +490,53 @@ function toggleSingleKakari() {
 }
 function setSingleKakariTarget(id) { S.single.kakariTarget = id || null; render(); }
 function setSingleNote(v) { S.single.note = v; }
-function setSingleSuccess(v) { S.single.success = v; render(); }
-function setSingleFail(v) { S.single.fail = v; render(); }
 
+/* ①よく使う技のチップを押したとき。系統も合わせて切り替える。 */
+function pickRecentSkill(id) {
+  var sk = skillById(id);
+  if (!sk) return;
+  S.single.family = sk.family;
+  S.single.skillId = sk.id;
+  render();
+}
+/* ②本数の増減。0本まで下げられる(跳ばなかった日も記録として残せるようにするため)。 */
+function stepSingleReps(delta) {
+  var next = (Number(S.single.reps) || 0) + delta;
+  if (next < 0) next = 0;
+  if (next > MAX_SINGLE_REPS) next = MAX_SINGLE_REPS;
+  S.single.reps = next;
+  if (!S.single.results) S.single.results = [];
+  /* 減らしたぶんの成功/失敗は捨て、増やしたぶんは未選択で足す */
+  if (S.single.results.length > next) S.single.results = S.single.results.slice(0, next);
+  while (S.single.results.length < next) S.single.results.push(null);
+  render();
+}
+/* ②成功/失敗の選択。同じものをもう一度押すと未選択に戻せる(任意入力のため)。 */
+function setSingleResult(idx, value) {
+  var r = S.single.results;
+  if (!r || idx >= r.length) return;
+  r[idx] = (r[idx] === value) ? null : value;
+  render();
+}
+function countResults(results, value) {
+  return (results || []).filter(function (v) { return v === value; }).length;
+}
+/* 本数ぶんの成功/失敗を1本＝1文字の文字列にする。○=成功 / ×=失敗 / -=どちらも選ばなかった。
+   スプレッドシートを直接開いたときにそのまま読めるようにするため、配列ではなく文字列で保存する。
+   (列名を results ではなく repResults にしているのは、ルーティーン用の既存列 result と紛らわしいため) */
+function encodeRepResults(results, reps) {
+  var out = "";
+  for (var i = 0; i < reps; i++) {
+    var v = (results || [])[i];
+    out += v === "success" ? "○" : (v === "fail" ? "×" : "-");
+  }
+  return out;
+}
+
+/* 0本でも保存できる(「その技には入ったが跳べなかった」も記録として残すため)。
+   技と選手が選ばれてさえいれば保存可能。 */
 function singleCountValid() {
-  var s = S.single.success, f = S.single.fail;
-  return (s !== "" && Number(s) >= 0) || (f !== "" && Number(f) >= 0);
+  return (Number(S.single.reps) || 0) >= 0;
 }
 
 function saveSingleEntry() {
@@ -456,8 +549,13 @@ function saveSingleEntry() {
     platform: S.platform,
     mode: "single",
     skillId: S.single.skillId,
-    success: Number(S.single.success) || 0,
-    fail: Number(S.single.fail) || 0,
+    /* reps は総本数。success/fail は本数ぶんの選択から自動集計する
+       (どちらも選ばなかった本は success にも fail にも入らない)。
+       success/fail を残しているのは、ダッシュボードの集計と過去の記録との互換のため。 */
+    reps: Number(S.single.reps) || 0,
+    repResults: encodeRepResults(S.single.results, Number(S.single.reps) || 0),
+    success: countResults(S.single.results, "success"),
+    fail: countResults(S.single.results, "fail"),
     kakari: !!S.single.kakari,
     kakariTarget: S.single.kakari ? (S.single.kakariTarget || null) : null,
     note: (S.single.note || "").trim(),
@@ -471,7 +569,8 @@ function saveSingleEntry() {
   ENTRIES.unshift(entry);
   markDateEntered(S.date);
   syncToBackend({ type: "saveEntry", entry: entry }, "記録");
-  S.single = emptySingleDraft();
+  /* 直前に記録した技がそのまま初期選択として残る(ENTRIESの先頭に入れたあとで作り直すため) */
+  S.single = emptySingleDraft(S.athleteId);
   S.savingFlash = true;
   render();
   setTimeout(function () { S.savingFlash = false; render(); }, 900);
@@ -792,15 +891,16 @@ function singleBinsFor(singleEs, period) {
   var map = {};
   singleEs.forEach(function (e) {
     var key = routineBinKey(period, e.date);
-    if (!map[key]) map[key] = { entries: [], reps: 0, success: 0 };
+    if (!map[key]) map[key] = { entries: [], reps: 0, judged: 0, success: 0 };
     map[key].entries.push(e);
     map[key].reps += entryCount(e);
+    map[key].judged += entryJudged(e);
     map[key].success += Number(e.success) || 0;
   });
   var keys = Object.keys(map).sort();
   return keys.map(function (key) {
     var b = map[key];
-    var rate = b.reps > 0 ? Math.round((b.success / b.reps) * 100) : null;
+    var rate = b.judged > 0 ? Math.round((b.success / b.judged) * 100) : null;
     return { key: key, label: routineBinLabel(period, key), reps: b.reps, success: b.success, rate: rate, entries: b.entries };
   });
 }
@@ -845,6 +945,48 @@ function renderSkillInfoCard(skill) {
 }
 
 /* ---- 単発フォーム ---- */
+/* ①よく使う技。実データが無いうちは何も出さない(空の枠を見せない)。 */
+function renderRecentSkillChips() {
+  var ids = recentSkillIdsFor(S.athleteId);
+  if (!ids.length) return "";
+  var chips = ids.map(function (id) {
+    var sk = skillById(id);
+    return '<button class="chip-btn recent-skill-chip' + (S.single.skillId === id ? " active" : "") + '" onclick="pickRecentSkill(\'' + escAttr(id) + '\')">' + escHtml(sk.name) + "</button>";
+  }).join("");
+  return '<div><span class="field-label">よく使う技(最近記録した順)</span><div class="chip-wrap">' + chips + "</div></div>";
+}
+
+/* ②本数(0本可)と、本数ぶんの成功/失敗。③ヨレは仕様未定のため押せないプレースホルダー。 */
+function renderRepsBlock() {
+  var reps = Number(S.single.reps) || 0;
+  var results = S.single.results || [];
+  var stepper =
+    '<div class="reps-step">' +
+    '<button class="reps-step-btn" onclick="stepSingleReps(-1)"' + (reps <= 0 ? " disabled" : "") + ">−</button>" +
+    '<span class="reps-step-num' + (reps === 0 ? " zero" : "") + '">' + reps + "</span>" +
+    '<button class="reps-step-btn" onclick="stepSingleReps(1)">＋</button>' +
+    '<span class="reps-step-unit">本</span>' +
+    "</div>";
+  var rows = "";
+  if (reps === 0) {
+    rows = '<div class="sub-label">0本のままでも保存できます(その技に入ったが跳べなかった日の記録として残せます)。</div>';
+  } else {
+    for (var i = 0; i < reps; i++) {
+      var v = results[i] || null;
+      rows +=
+        '<div class="rep-item"><span class="rep-idx">' + (i + 1) + "本目</span>" +
+        '<span class="rep-picks">' +
+        '<button class="rep-pick ok' + (v === "success" ? " on" : "") + '" onclick="setSingleResult(' + i + ", 'success')\">成功</button>" +
+        '<button class="rep-pick ng' + (v === "fail" ? " on" : "") + '" onclick="setSingleResult(' + i + ", 'fail')\">失敗</button>" +
+        '<button class="rep-pick soon" disabled>ヨレ</button>' +
+        "</span></div>";
+    }
+    rows = '<div class="rep-list">' + rows + "</div>" +
+      '<div class="sub-label">成功・失敗は選ばなくても保存できます。選んだものをもう一度押すと取り消せます。</div>';
+  }
+  return '<div><span class="field-label">本数</span>' + stepper + rows + "</div>";
+}
+
 function renderSingleForm() {
   var skill = skillById(S.single.skillId);
   var familyChips = ["forward", "backward"].map(function (fam) {
@@ -859,14 +1001,11 @@ function renderSingleForm() {
     : "";
   return (
     '<div class="card raised section">' +
+    renderRecentSkillChips() +
     '<div><span class="field-label">系統</span><div class="chip-grid two">' + familyChips + "</div></div>" +
     '<div><span class="field-label">技を選択(前系・後系全' + SKILLS.length + '技を収録)</span><div class="select-wrap"><select class="select-input" onchange="setSingleSkill(this.value)">' + optionsHtml + '</select><span class="select-chevron">' + iconChevron(16, "#6E8779") + "</span></div></div>" +
     renderSkillInfoCard(skill) +
-    '<div><span class="field-label">本数</span><div class="inline-row">' +
-    '<div class="num-field"><span class="num-field-label">成功本数</span><input id="in-single-success" class="num-input" type="text" autocomplete="off" inputmode="numeric" min="0" placeholder="0" value="' + escAttr(S.single.success) + '" oninput="setSingleSuccess(this.value)"></div>' +
-    '<div class="num-field"><span class="num-field-label">失敗本数</span><input id="in-single-fail" class="num-input" type="text" autocomplete="off" inputmode="numeric" min="0" placeholder="0" value="' + escAttr(S.single.fail) + '" oninput="setSingleFail(this.value)"></div>' +
-    "</div>" +
-    '<div class="sub-label">成功・失敗のどちらか一方だけの入力でも保存できます(両方0や未入力の場合は保存できません)。</div></div>' +
+    renderRepsBlock() +
     '<div><span class="field-label">修飾</span><div class="inline-row">' + kakariChip + "</div>" +
     '<div class="sub-label">「かかり練習」は、目標とする技を分解して練習することです(例:2回宙返りを覚えるために1回宙返り3/4のかかり練習をする)。ONにすると、目標にしている完成技を紐づけて記録できます。</div>' +
     kakariTargetBlock +
@@ -1117,10 +1256,19 @@ function skillLabelForEntry(e) {
   return sk ? sk.name : "(削除された技)";
 }
 
-function entryCount(e) { return (Number(e.success) || 0) + (Number(e.fail) || 0); }
+/* 総本数。reps を持つ記録(本数を選んで保存したもの)はその値、
+   持たない過去の記録は従来どおり 成功+失敗 を総本数とみなす。 */
+function entryCount(e) {
+  if (e && e.reps != null && e.reps !== "") return Number(e.reps) || 0;
+  return (Number(e.success) || 0) + (Number(e.fail) || 0);
+}
+/* 成功/失敗のどちらかを選んだ本数。成功率の分母はこちらを使う
+   (成功・失敗を選ばなかった本を分母に入れると成功率が実際より低く出てしまうため)。
+   過去の記録では entryCount と同じ値になるので、表示は変わらない。 */
+function entryJudged(e) { return (Number(e.success) || 0) + (Number(e.fail) || 0); }
 function entryRatePct(e) {
-  var total = entryCount(e);
-  return total > 0 ? Math.round((Number(e.success) || 0) / total * 100) : null;
+  var judged = entryJudged(e);
+  return judged > 0 ? Math.round((Number(e.success) || 0) / judged * 100) : null;
 }
 
 function renderEntryCard(e) {
@@ -1137,7 +1285,9 @@ function renderEntryCard(e) {
     var rate = entryRatePct(e);
     content =
       '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';">' + (sk ? escHtml(sk.name) : "(削除された技)") + (sk && sk.numeric ? " (" + escHtml(sk.numeric) + ")" : "") + " ・DD" + fmtDD(e.totalDD) + "</span>" +
-      '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';">' + (e.success || 0) + "/" + total + "本" + (rate !== null ? " ・" + rate + "%" : "") + "</span>" +
+      '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';">' + total + "本" +
+        (entryJudged(e) > 0 ? "(成功" + (Number(e.success) || 0) + "・失敗" + (Number(e.fail) || 0) + ")" : "") +
+        (rate !== null ? " ・" + rate + "%" : "") + "</span>" +
       (e.kakari ? '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';border-color:#24603F;">かかり練習' + (targetSk ? " → " + escHtml(targetSk.name) : "") + "</span>" : "");
   } else {
     var names = e.skills.map(function (sid, i) {
@@ -1546,14 +1696,15 @@ function renderPlatformDetailModal() {
     body = '<div class="empty-card">まだ技の記録がありません</div>';
   } else {
     var byPlat = {};
-    PLATFORMS.forEach(function (p) { byPlat[p] = { reps: 0, success: 0 }; });
+    PLATFORMS.forEach(function (p) { byPlat[p] = { reps: 0, judged: 0, success: 0 }; });
     singleEs.forEach(function (e) {
       byPlat[e.platform].reps += entryCount(e);
+      byPlat[e.platform].judged += entryJudged(e);
       byPlat[e.platform].success += Number(e.success) || 0;
     });
     var items = PLATFORMS.map(function (p) {
       var b = byPlat[p];
-      var rate = b.reps > 0 ? Math.round((b.success / b.reps) * 100) : null;
+      var rate = b.judged > 0 ? Math.round((b.success / b.judged) * 100) : null;
       return { name: p, reps: b.reps, rate: rate };
     });
     body =
@@ -1585,8 +1736,9 @@ function renderTeamDashboard() {
   var routineCount = ENTRIES.filter(function (e) { return e.mode === "routine"; }).length;
   var totalDDSum = ENTRIES.reduce(function (s, e) { return s + (e.totalDD || 0); }, 0);
   var totalReps = singleEntries.reduce(function (s, e) { return s + entryCount(e); }, 0);
+  var totalJudged = singleEntries.reduce(function (s, e) { return s + entryJudged(e); }, 0);
   var totalSuccess = singleEntries.reduce(function (s, e) { return s + (Number(e.success) || 0); }, 0);
-  var teamRate = totalReps > 0 ? Math.round(totalSuccess / totalReps * 100) : null;
+  var teamRate = totalJudged > 0 ? Math.round(totalSuccess / totalJudged * 100) : null;
   var statsHtml =
     '<div class="stat-grid">' +
     statCard("登録選手数", ATHLETES.length + "名") +
@@ -1663,8 +1815,9 @@ function renderAthleteDashboard(athleteId) {
     : null;
   var dayEs = latestSingleDate ? singleEs.filter(function (e) { return e.date === latestSingleDate; }) : [];
   var dayTotalReps = dayEs.reduce(function (s, e) { return s + entryCount(e); }, 0);
+  var dayTotalJudged = dayEs.reduce(function (s, e) { return s + entryJudged(e); }, 0);
   var dayTotalSuccess = dayEs.reduce(function (s, e) { return s + (Number(e.success) || 0); }, 0);
-  var dayRate = dayTotalReps > 0 ? Math.round(dayTotalSuccess / dayTotalReps * 100) : null;
+  var dayRate = dayTotalJudged > 0 ? Math.round(dayTotalSuccess / dayTotalJudged * 100) : null;
 
   var statsHtml =
     '<div class="stat-grid">' +
@@ -1707,22 +1860,23 @@ function renderAthleteDashboard(athleteId) {
     if (e.mode === "single") {
       var sk = skillById(e.skillId);
       if (sk) {
-        if (!usage[sk.name]) usage[sk.name] = { count: 0, dd: sk.dd, singleReps: 0, singleSuccess: 0 };
+        if (!usage[sk.name]) usage[sk.name] = { count: 0, dd: sk.dd, singleReps: 0, singleJudged: 0, singleSuccess: 0 };
         var reps = entryCount(e);
         usage[sk.name].count += reps > 0 ? reps : 1;
         usage[sk.name].singleReps += reps;
+        usage[sk.name].singleJudged += entryJudged(e);
         usage[sk.name].singleSuccess += Number(e.success) || 0;
       }
     } else if (e.mode === "routine") {
       e.skills.forEach(function (sid) {
         var s2 = skillById(sid);
-        if (s2) { if (!usage[s2.name]) usage[s2.name] = { count: 0, dd: s2.dd, singleReps: 0, singleSuccess: 0 }; usage[s2.name].count += 1; }
+        if (s2) { if (!usage[s2.name]) usage[s2.name] = { count: 0, dd: s2.dd, singleReps: 0, singleJudged: 0, singleSuccess: 0 }; usage[s2.name].count += 1; }
       });
     }
   });
   var usageArr = Object.keys(usage).map(function (name) {
     var u = usage[name];
-    var rate = u.singleReps > 0 ? Math.round(u.singleSuccess / u.singleReps * 100) : null;
+    var rate = u.singleJudged > 0 ? Math.round(u.singleSuccess / u.singleJudged * 100) : null;
     return { name: name, count: u.count, dd: u.dd, rate: rate };
   });
   if (techMode === "count") usageArr.sort(function (a, b) { return b.count - a.count; });
