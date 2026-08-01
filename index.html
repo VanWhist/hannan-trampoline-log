@@ -1953,7 +1953,28 @@ function renderApp() {
 }
 
 
+/* 日本語入力(IME)の変換中は再描画しない。
+   render() は #root を丸ごと作り直すため、変換の途中で走ると入力欄が別の要素に差し替わり、
+   未確定の文字(変換中のひらがな)が消えてしまう。iPhoneでは特に顕著。
+   変換中に来た描画要求は覚えておき、変換が確定した直後に1回だけまとめて描き直す。 */
+var isComposing = false;
+var renderQueuedWhileComposing = false;
+document.addEventListener("compositionstart", function () { isComposing = true; }, true);
+document.addEventListener("compositionend", function () {
+  isComposing = false;
+  if (renderQueuedWhileComposing) {
+    renderQueuedWhileComposing = false;
+    /* このイベントの処理が終わってから描き直す(処理中に要素を差し替えないため) */
+    setTimeout(render, 0);
+  }
+}, true);
+/* 変換中に入力欄からフォーカスが外れると compositionend が来ないことがあるので、その保険 */
+document.addEventListener("blur", function () {
+  if (isComposing) { isComposing = false; renderQueuedWhileComposing = false; }
+}, true);
+
 function render() {
+  if (isComposing) { renderQueuedWhileComposing = true; return; }
   var root = document.getElementById("root");
   var active = document.activeElement;
   var focusId = null, selStart = null, selEnd = null;
