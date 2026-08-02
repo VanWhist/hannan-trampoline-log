@@ -620,25 +620,73 @@ var FAVORITES = [];
 /* ================= バックエンド(Googleスプレッドシート / Apps Script)接続 ================= */
 var API_URL = "https://script.google.com/macros/s/AKfycbwatMAHr8BWhnZqEKjDfQw-w0cCa3EUvqzEt5VH-roKYWjr0IaVarYx1vuidPl2P9Dn/exec";
 var BACKEND_READY = false;     // 初回ロード完了フラグ(未完了なら読み込み中画面)
+var refreshing = false;        // キャッシュを表示したまま裏で最新を取得中かどうか
 var backendError = null;       // 直近の通信エラーメッセージ(あれば画面上部に表示)
 
 // doGet で全データを取得してローカル配列に反映する
+/* ---------- 起動を速くするための端末内キャッシュ ----------
+   バックエンド(Apps Script)の応答は毎回1.3〜2.8秒かかる。そのあいだ「読み込み中」だけを見せると
+   起動が遅く感じるので、前回読み込んだ内容を端末に保存しておき、
+   起動時はまずそれを表示して、裏で最新を取り直して差し替える。
+   キャッシュはあくまで表示を早く出すためのもので、正はいつでもスプレッドシート側。 */
+var CACHE_KEY = "hannan-trampoline-log:data";
+var CACHE_VERSION = 1;   /* 保存形式を変えたときに +1 する。古いキャッシュは自動的に無視される */
+
+function saveDataCache() {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      v: CACHE_VERSION, savedAt: Date.now(),
+      athletes: ATHLETES, favorites: FAVORITES, entries: ENTRIES
+    }));
+  } catch (e) { /* 容量超過やプライベートブラウズでも動作は妨げない */ }
+}
+/* 保存済みキャッシュを読み込む。形が想定と違えば使わない（壊れたキャッシュで起動不能にしない） */
+function loadDataCache() {
+  try {
+    var raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    var c = JSON.parse(raw);
+    if (!c || c.v !== CACHE_VERSION) return null;
+    if (!Array.isArray(c.athletes) || !Array.isArray(c.entries) || !Array.isArray(c.favorites)) return null;
+    return c;
+  } catch (e) { return null; }
+}
+function applyData(data) {
+  ATHLETES = (data.athletes || []).slice().sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
+  FAVORITES = (data.favorites || []).slice().sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
+  ENTRIES = (data.entries || []).slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+  restoreSavedAthlete();   // 前回選んだ選手を選択状態に戻す
+}
+
+/* キャッシュがあれば即座に画面を出す。最新取得は loadAll() が裏で続ける */
+function showCachedIfAny() {
+  var c = loadDataCache();
+  if (!c) return false;
+  applyData(c);
+  BACKEND_READY = true;
+  refreshing = true;        // ヘッダーに「更新中…」を出す
+  return true;
+}
+
 function loadAll() {
   fetch(API_URL, { method: "GET" })
     .then(function (r) { return r.json(); })
     .then(function (data) {
       if (data && data.status === "error") throw new Error(data.message || "load error");
-      ATHLETES = (data.athletes || []).slice().sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
-      FAVORITES = (data.favorites || []).slice().sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
-      ENTRIES = (data.entries || []).slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
-      restoreSavedAthlete();   // 前回選んだ選手を選択状態に戻す
+      applyData(data);
+      saveDataCache();
       BACKEND_READY = true;
       backendError = null;
+      refreshing = false;
       render();
     })
     .catch(function (err) {
-      backendError = "データの読み込みに失敗しました。通信環境を確認して再読み込みしてください。";
+      /* キャッシュを出せている場合は、それを消さずに「最新に更新できなかった」とだけ伝える */
+      backendError = BACKEND_READY
+        ? "最新のデータに更新できませんでした（表示は前回読み込んだ内容です）。"
+        : "データの読み込みに失敗しました。通信環境を確認して再読み込みしてください。";
       BACKEND_READY = true; // エラー表示付きで画面は出す
+      refreshing = false;
       render();
       console.error("loadAll failed", err);
     });
@@ -823,6 +871,7 @@ function confirmAddAthlete() {
   var id = nextAthleteId();
   var createdAt = Date.now();
   ATHLETES.push({ id: id, name: name, createdAt: createdAt });
+  saveDataCache();
   S.addingAthlete = false;
   S.athleteId = id;
   saveAthleteId(id);
@@ -1186,6 +1235,7 @@ function saveSingleEntry() {
   };
   ENTRIES.unshift(entry);
   markDateEntered(S.date);
+  saveDataCache();
   syncToBackend({ type: "saveEntry", entry: entry }, "記録");
   /* 直前に記録した技がそのまま初期選択として残る(ENTRIESの先頭に入れたあとで作り直すため) */
   S.single = emptySingleDraft(S.athleteId);
@@ -1222,6 +1272,7 @@ function saveAirtimeEntry() {
   };
   ENTRIES.unshift(entry);
   markDateEntered(S.date);
+  saveDataCache();
   syncToBackend({ type: "saveEntry", entry: entry }, "記録");
   S.airtime = emptyAirtimeDraft();
   S.airtimeSavingFlash = true;
@@ -1384,6 +1435,7 @@ function saveRoutineDef() {
   var favCreatedAt = Date.now();
   var favSkillIds = validSkills.map(function (r) { return r.skillId; });
   FAVORITES.push({ id: favId, name: name, skillIds: favSkillIds, createdAt: favCreatedAt });
+  saveDataCache();
   syncToBackend({ type: "addFavorite", id: favId, name: name, skillIds: favSkillIds, createdAt: favCreatedAt }, "ルーティーン登録");
   S.routine = emptyRoutineDraft();
   S.routineDefSavingFlash = true;
@@ -1418,6 +1470,7 @@ function saveRoutineExecEntry() {
   };
   ENTRIES.unshift(entry);
   markDateEntered(S.date);
+  saveDataCache();
   syncToBackend({ type: "saveEntry", entry: entry }, "記録");
   S.routineExec = emptyRoutineExecDraft();
   S.routineExecSavingFlash = true;
@@ -1439,6 +1492,7 @@ function askDeleteFavorite(id) { S.confirmDeleteFavId = id; render(); }
 function cancelDeleteFavorite() { S.confirmDeleteFavId = null; render(); }
 function confirmDeleteFavorite(id) {
   FAVORITES = FAVORITES.filter(function (f) { return f.id !== id; });
+  saveDataCache();
   syncToBackend({ type: "deleteFavorite", id: id }, "ルーティーン削除");
   S.confirmDeleteFavId = null;
   render();
@@ -1566,6 +1620,7 @@ function askDeleteEntry(id) { S.confirmDeleteId = id; render(); }
 function cancelDeleteEntry() { S.confirmDeleteId = null; render(); }
 function confirmDeleteEntry(id) {
   ENTRIES = ENTRIES.filter(function (e) { return e.id !== id; });
+  saveDataCache();
   syncToBackend({ type: "deleteEntry", id: id }, "記録削除");
   S.confirmDeleteId = null;
   render();
@@ -2980,7 +3035,8 @@ function renderHeader() {
   return (
     '<div class="header-row"><div class="header-left">' +
     (LOGO_DATA_URI ? '<img class="app-logo" src="' + LOGO_DATA_URI + '" alt="logo" />' : "") +
-    '<div class="app-title-wrap"><div class="app-title">' + escHtml(TEAM_NAME) + '</div><div class="app-tag">トランポリン競技 練習・大会記録</div></div>' +
+    '<div class="app-title-wrap"><div class="app-title">' + escHtml(TEAM_NAME) + '</div><div class="app-tag">' +
+    (refreshing ? '最新のデータに更新中…' : 'トランポリン競技 練習・大会記録') + "</div></div>" +
     "</div></div>"
   );
 }
@@ -3075,8 +3131,11 @@ function render() {
 }
 
 /* ---- 起動:まずスプレッドシートから全データを読み込む ---- */
-render();      // 読み込み中画面を即表示
-loadAll();     // doGet完了後にデータ入りで再描画
+/* 起動: キャッシュがあればそれで即座に画面を出し、無ければ「読み込み中」を出す。
+   いずれの場合も loadAll() が裏で最新を取りに行き、届いたら差し替える。 */
+showCachedIfAny();
+render();
+loadAll();
 </script>
 </body>
 </html>
