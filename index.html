@@ -397,16 +397,17 @@ function deductionOf(p) {
   return fore <= ZONE.B ? 0.2 : 0.3;
 }
 
-/* 演技のH点。判定不能の本は分母からも分子からも除外する。
-   H点は「10技で10.0」という定義なので、この関数の値に意味があるのは技数がちょうど10のときだけ。
-   表示に使うときは landingScoreLabel() を通すこと(技数が10でなければ減点合計を出す)。 */
-function estimatedH(landings) {
+/* 演技の推定H点。判定不能の本は分母からも分子からも除外する。
+   満点は10固定ではなく、実施した技数と同じ
+   (FIG TRA CoP 2025-2028 §19.9「最大得点は演技中に実施された有効技数に等しい」。
+    §17.2.4.2 水平移動の減点は、その点数から引く)。
+   したがって7技の演技の満点は7.0で、減点0.6なら推定Hは6.4。
+   未記録・判定不能があると減点が分からないので、この関数を使ってよいのは
+   全技を判定できたときだけ。その判定は landingScoreLabel() が行う。 */
+function estimatedH(landings, skillCount) {
   var judged = (landings || []).filter(function (l) { return l && !l.undecidable && landingPointOf(l); });
-  return 10 - judged.reduce(function (s, l) { return s + deductionOf(landingPointOf(l)); }, 0);
+  return skillCount - judged.reduce(function (s, l) { return s + deductionOf(landingPointOf(l)); }, 0);
 }
-
-/* H点が10.0になる技数。ルーティーンの技数がこれと違うときは推定Hを出さない */
-var LANDING_H_SKILL_COUNT = 10;
 
 var ZONE_COLORS = { "0.0": "#22C17E", "0.1": "#E3C24B", "0.2": "#FF9645", "0.3": "#FF6B5A" };
 /* ベッド図の塗りの濃さ。減点が重いほど濃くして、色だけでなく濃さでも区別できるようにする
@@ -507,27 +508,35 @@ function landingStats(arr, count) {
   return st;
 }
 
-/* 推定H点を出してよいのは「技数がちょうど10」かつ「10技すべてを判定できた」ときだけ。
+/* 推定H点を出してよいのは「全技を判定できた」ときだけ。技数は問わない。
 
-   技数の条件: H点は10技で10.0という定義なので、8技や12技で「推定H 9.4」と出すと
-   意味の違う数字になってしまう。
+   技数を問わない理由: 満点は10固定ではなく技数と同じ(§19.9)で、水平移動の減点は
+   その点数から引く(§17.2.4.2)。7技の演技なら満点7.0・減点0.6で推定H 6.4になる。
+   実際の大会リザルトでも、技数1の演技でH=1.00、技数0でH=0.000 が確認されている。
+   ただし満点が10でないことが読み手に伝わらないと数字を見誤るので、
+   技数と満点を必ずラベルに書く。
 
    全技を判定できたことの条件: 未記録・判定不能の技は減点が分からない。
-   これを減点ゼロとして 10 から引くと、記録が欠けているほど推定H点が高く出てしまう。
+   これを減点ゼロとして満点から引くと、記録が欠けているほど推定H点が高く出てしまう。
    中央率では未記録・判定不能を中央に数えないと決めているので、推定H点でも同じ原則を通す。
+   満たさないときは減点合計だけを出し、判定できていない技数を併記する。
 
-   どちらかを満たさないときは減点合計だけを出し、判定できていない技数を併記する。
    算出値は必ず「推定H」と表記する。公式H点(電子計測または審判2名)とは別物なので
    「公式H」というラベルは使わない。 */
 function landingScoreLabel(st) {
   var ded = round1(st.deduction);
   var unjudged = st.unrecorded + st.undecidable;
-  if (st.total === LANDING_H_SKILL_COUNT && unjudged === 0) {
-    return { label: "推定H(10技)", value: (10 - ded).toFixed(1), isEstimatedH: true, unjudged: 0 };
+  if (unjudged === 0) {
+    /* 満点＝技数。10技なら従来どおり10.0からの引き算になる */
+    return {
+      label: "推定H(" + st.total + "技・満点" + st.total.toFixed(1) + ")",
+      value: (st.total - ded).toFixed(1),
+      isEstimatedH: true,
+      unjudged: 0
+    };
   }
   return {
-    label: "減点合計" + (st.total === LANDING_H_SKILL_COUNT ? "" : "(" + st.total + "技)") +
-      (unjudged ? " ／未判定 " + unjudged + "技" : ""),
+    label: "減点合計(" + st.total + "技) ／未判定 " + unjudged + "技",
     value: (ded > 0 ? "−" : "") + ded.toFixed(1),
     isEstimatedH: false,
     unjudged: unjudged
@@ -535,9 +544,6 @@ function landingScoreLabel(st) {
 }
 /* 推定H点を出さなかった理由の説明。出している場合は空文字 */
 function landingScoreNote(st) {
-  if (st.total !== LANDING_H_SKILL_COUNT) {
-    return "技数が10でないため推定H点は出しません。H点は10技で10.0という定義です。";
-  }
   if (st.unrecorded + st.undecidable > 0) {
     return "判定できていない技があるため推定H点は出しません。未記録・判定不能を減点ゼロとして扱うと、記録が欠けているほど推定H点が高く出てしまうためです。";
   }
@@ -2400,7 +2406,7 @@ function renderLandingModal() {
     });
   });
 
-  /* 推定H点は「ちょうど10技」のときだけ。単発は演技ではないのでH点を出さない */
+  /* 推定H点は全技を判定できたときだけ(技数は問わない)。単発は演技ではないのでH点を出さない */
   var scoreHtml = "";
   if (ctx.scope === "routine") {
     var sc = landingScoreLabel(st);
@@ -2481,7 +2487,7 @@ function renderLandingViewModal() {
       "</span></div>";
   }).join("");
 
-  /* 推定H点は技数がちょうど10のときだけ。単発は演技ではないのでH点を出さない */
+  /* 推定H点は全技を判定できたときだけ(技数は問わない)。単発は演技ではないのでH点を出さない */
   var scoreHtml;
   if (isRoutine) {
     var sc = landingScoreLabel(st);
