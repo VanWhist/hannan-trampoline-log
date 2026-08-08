@@ -1,0 +1,541 @@
+/* =====================================================================
+   阪南大学トランポリンクラブ 記録アプリ  —  Apps Script バックエンド
+   -------------------------------------------------------------------
+   スプレッドシート「阪南大学トランポリンクラブ記録」にバインドして使用。
+   タブ構成:
+     - Athletes : id, name, createdAt
+     - Entries  : id, createdAt, timestamp, athleteId, date, platform, mode,
+                  skillId, success, fail, kakari, kakariTarget, note, totalDD,
+                  routineName, skills, airTime, airTimeReps, tScore, result,
+                  videoSuccessName, videoSuccessUrl, videoFailName, videoFailUrl,
+                    reps, repResults  (repsは総本数。repResultsは1本=1文字で ○成功/×失敗/-未選択)
+                  landings (JSON文字列。1本ごとに1要素、未記録の本は null)
+     - Favorites: id, name, skillIds, createdAt
+                  ※「今この名前のルーティーンはこの構成」という現行版のヘッド。
+     - RoutineVersions: versionId, routineId, routineName, validFrom, validTo,
+                        skillIds, createdAt, updatedAt
+                  ※「いつからいつまで、どの構成だったか」の履歴台帳。
+                    validTo が空なら現行版。routineId は Favorites の id。
+                    大会リザルトの1本目〜10本目がどの技だったかを後から復元するために使う。
+                    編集では既存の行を書き換えず、期間を閉じて新しい行を足す。
+   ヘッダー行は「名前」で参照するので、列順を変えても動くが名前は変えないこと。
+   Webアプリとしてデプロイ(実行:自分 / アクセス:全員)。
+
+   ★初回だけ、エディタから migrateRoutineVersions() を1回実行すること。
+     既存の登録ルーティーンに validFrom=2000-01-01 の初期版を作る(何度実行しても安全)。
+   ===================================================================== */
+
+var TZ = 'Asia/Tokyo';
+var VERSION = 2;
+
+/* 移行で作る初期版の開始日。「これより前は分からない」を表すだけの十分に古い日付 */
+var MIN_VALID_FROM = '2000-01-01';
+var VERSIONS_SHEET = 'RoutineVersions';
+var VERSIONS_HEADERS = ['versionId', 'routineId', 'routineName', 'validFrom', 'validTo', 'skillIds', 'createdAt', 'updatedAt'];
+
+/* ---------- 共通ヘルパ ---------- */
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+function sheet_(name) {
+  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
+}
+// ヘッダー行(トリム済み)を返す
+function headers_(sheet) {
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return [];
+  return sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) {
+    return String(h).trim();
+  });
+}
+// 日付っぽい列を安全に文字列へ戻す(Sheetsが勝手にDate化した場合の保険)
+function fmtDate_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
+  return v === null || v === undefined ? '' : String(v);
+}
+function fmtStamp_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, TZ, 'yyyy-MM-dd HH:mm:ss');
+  return v === null || v === undefined ? '' : String(v);
+}
+function numOrNull_(v) {
+  if (v === '' || v === null || v === undefined) return null;
+  var n = Number(v);
+  return isNaN(n) ? null : n;
+}
+// カンマ結合の列を配列に戻す(Favorites.skillIds / Entries.skills と同じ持ち方)
+function splitIds_(v) {
+  return String(v || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+}
+// "YYYY-MM-DD" だけを通す。それ以外は空文字にして、期間判定が壊れないようにする
+function dateStrOrEmpty_(v) {
+  var s = fmtDate_(v).trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+}
+
+/* ---------- doGet:全データを返す ---------- */
+/* ---------- 応答を速くするためのキャッシュ ----------
+   doGet は毎回シートを読むため1.3〜2.8秒かかる。内容が変わるのは書き込み(doPost)のときだけなので、
+   組み立てたJSONを短時間キャッシュし、書き込みのたびに捨てる。
+   CacheServiceの1キーの上限は100KBなので、それを超えるサイズになったらキャッシュしない
+   (記録が増えても壊れず、単に従来どおりの速度に戻るだけ)。 */
+/* キーに _v2 を付けているのは、返す中身に routineVersions を足したため。
+   デプロイ直後に古い形のキャッシュが最大5分ぶん残るのを避ける。
+   ★今後もデータの形を変えたらこのキーを上げること。 */
+var CACHE_KEY_ALL = 'allData_v2';
+var CACHE_TTL_SEC = 300;      /* 書き込み時に必ず捨てるので、これは取りこぼし用の保険 */
+var CACHE_MAX_BYTES = 90000;
+
+function scriptCache_() {
+  try { return CacheService.getScriptCache(); } catch (e) { return null; }
+}
+function dropCache_() {
+  var c = scriptCache_();
+  if (c) { try { c.remove(CACHE_KEY_ALL); } catch (e) {} }
+}
+
+function doGet(e) {
+  try {
+    /* 別アプリ向けの照会。パラメータが付いているときだけこちらに入るので、
+       アプリ本体のパラメータなしGET(全データ取得)の挙動は今までどおり。 */
+    var type = (e && e.parameter && e.parameter.type) ? String(e.parameter.type) : '';
+    if (type === 'routineVersion' || type === 'routineVersions') return routineVersionQuery_(e.parameter);
+
+    var cache = scriptCache_();
+    if (cache) {
+      var hit = cache.get(CACHE_KEY_ALL);
+      if (hit) return ContentService.createTextOutput(hit).setMimeType(ContentService.MimeType.JSON);
+    }
+    var text = JSON.stringify({
+      athletes: getAthletes_(),
+      entries: getEntries_(),
+      favorites: getFavorites_(),
+      routineVersions: getRoutineVersions_(),
+      version: VERSION
+    });
+    if (cache && text.length < CACHE_MAX_BYTES) {
+      try { cache.put(CACHE_KEY_ALL, text, CACHE_TTL_SEC); } catch (e2) {}
+    }
+    return ContentService.createTextOutput(text).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return json_({ status: 'error', message: String(err), version: VERSION });
+  }
+}
+
+function getAthletes_() {
+  var sh = sheet_('Athletes');
+  var data = sh.getDataRange().getValues();
+  if (data.length < 2) return [];
+  var head = data.shift().map(function (h) { return String(h).trim(); });
+  return data.filter(function (row) { return String(row[0]).trim() !== ''; }).map(function (row) {
+    var o = {};
+    head.forEach(function (h, i) { o[h] = row[i]; });
+    return {
+      id: String(o.id).trim(),
+      name: o.name === null || o.name === undefined ? '' : String(o.name),
+      createdAt: numOrNull_(o.createdAt) || 0
+    };
+  });
+}
+
+function getFavorites_() {
+  var sh = sheet_('Favorites');
+  var data = sh.getDataRange().getValues();
+  if (data.length < 2) return [];
+  var head = data.shift().map(function (h) { return String(h).trim(); });
+  return data.filter(function (row) { return String(row[0]).trim() !== ''; }).map(function (row) {
+    var o = {};
+    head.forEach(function (h, i) { o[h] = row[i]; });
+    return {
+      id: String(o.id).trim(),
+      name: o.name === null || o.name === undefined ? '' : String(o.name),
+      skillIds: splitIds_(o.skillIds),
+      createdAt: numOrNull_(o.createdAt) || 0
+    };
+  });
+}
+
+/* ルーティーンの版。タブがまだ無い間は空配列を返す(アプリ側は版が無くても動く)。
+   読み出しでシートを作らないのは、単に見に来ただけで書き込みが走るのを避けるため。
+   タブは migrateRoutineVersions() か、最初の書き込みのときに作られる。 */
+function getRoutineVersions_() {
+  var sh = sheet_(VERSIONS_SHEET);
+  if (!sh) return [];
+  var data = sh.getDataRange().getValues();
+  if (data.length < 2) return [];
+  var head = data.shift().map(function (h) { return String(h).trim(); });
+  return data.filter(function (row) { return String(row[0]).trim() !== ''; }).map(function (row) {
+    var o = {};
+    head.forEach(function (h, i) { o[h] = row[i]; });
+    return {
+      versionId: String(o.versionId).trim(),
+      routineId: String(o.routineId).trim(),
+      routineName: o.routineName === null || o.routineName === undefined ? '' : String(o.routineName),
+      validFrom: dateStrOrEmpty_(o.validFrom) || MIN_VALID_FROM,
+      validTo: dateStrOrEmpty_(o.validTo),
+      skillIds: splitIds_(o.skillIds),
+      createdAt: numOrNull_(o.createdAt) || 0,
+      updatedAt: numOrNull_(o.updatedAt) || 0
+    };
+  });
+}
+
+function getEntries_() {
+  var sh = sheet_('Entries');
+  var data = sh.getDataRange().getValues();
+  if (data.length < 2) return [];
+  var head = data.shift().map(function (h) { return String(h).trim(); });
+  return data.filter(function (row) { return String(row[0]).trim() !== ''; }).map(function (row) {
+    var o = {};
+    head.forEach(function (h, i) { o[h] = row[i]; });
+    var skills = splitIds_(o.skills);
+    return {
+      id: String(o.id).trim(),
+      createdAt: numOrNull_(o.createdAt) || 0,
+      timestamp: fmtStamp_(o.timestamp),
+      athleteId: String(o.athleteId).trim(),
+      date: fmtDate_(o.date),
+      platform: o.platform === null || o.platform === undefined ? '' : String(o.platform),
+      mode: String(o.mode).trim(),
+      skillId: o.skillId ? String(o.skillId).trim() : null,
+      success: numOrNull_(o.success),
+      fail: numOrNull_(o.fail),
+      reps: numOrNull_(o.reps),
+      repResults: o.repResults == null ? '' : String(o.repResults),
+      landings: o.landings === null || o.landings === undefined ? '' : String(o.landings),
+      kakari: o.kakari === true || String(o.kakari).toLowerCase() === 'true',
+      kakariTarget: o.kakariTarget ? String(o.kakariTarget).trim() : null,
+      note: o.note === null || o.note === undefined ? '' : String(o.note),
+      totalDD: numOrNull_(o.totalDD),
+      routineName: o.routineName === null || o.routineName === undefined ? '' : String(o.routineName),
+      skills: skills,
+      airTime: numOrNull_(o.airTime),
+      airTimeReps: numOrNull_(o.airTimeReps),
+      tScore: numOrNull_(o.tScore),
+      result: o.result ? String(o.result).trim() : null,
+      videoSuccessName: o.videoSuccessName ? String(o.videoSuccessName) : null,
+      videoSuccessUrl: o.videoSuccessUrl ? String(o.videoSuccessUrl) : null,
+      videoFailName: o.videoFailName ? String(o.videoFailName) : null,
+      videoFailUrl: o.videoFailUrl ? String(o.videoFailUrl) : null
+    };
+  });
+}
+
+/* ---------- 別アプリ向けの照会 ----------
+   GET ?type=routineVersion&athleteId=<任意>&date=YYYY-MM-DD[&routineId=<任意>]
+     → その日に有効だったルーティーンの構成を返す。
+   GET ?type=routineVersions
+     → 全ルーティーンの全版をそのまま返す(まとめて取り込みたいとき)。
+
+   athleteId は受け取るが、いまは使わない。
+   登録ルーティーンが全選手共通(Favorites に athleteId が無い)ため。
+   将来ルーティーンを選手ごとに分けたら、ここで絞り込む。
+
+   技名は返さない。技カタログ(s1〜s144の名前・難度点)はアプリのHTMLの中だけにあり、
+   こちら側は持っていないため。技名つきが要る場合は、アプリの
+   「版の履歴」→「この履歴をJSONで書き出す」で出したJSONを使う。 */
+function routineVersionQuery_(params) {
+  var all = getRoutineVersions_();
+  if (String(params.type) === 'routineVersions') {
+    return json_({ status: 'ok', routineVersions: all, version: VERSION });
+  }
+  var date = dateStrOrEmpty_(params.date || '');
+  if (!date) {
+    return json_({ status: 'error', message: 'date is required as YYYY-MM-DD', version: VERSION });
+  }
+  var routineId = params.routineId ? String(params.routineId).trim() : '';
+
+  /* 削除されたルーティーンの版も返す(過去の大会の構成を引けなくなると困るため)。
+     ただし今も一覧にあるかどうかは active で分かるようにしておく。 */
+  var alive = {};
+  getFavorites_().forEach(function (f) { alive[f.id] = true; });
+
+  /* その日に有効だった版 = validFrom <= date <= validTo(空なら無期限) */
+  var hits = all.filter(function (v) {
+    if (routineId && v.routineId !== routineId) return false;
+    return v.validFrom <= date && (!v.validTo || date <= v.validTo);
+  }).map(function (v) {
+    return {
+      routineId: v.routineId,
+      routineName: v.routineName,
+      versionId: v.versionId,
+      validFrom: v.validFrom,
+      validTo: v.validTo,
+      skillIds: v.skillIds,
+      active: !!alive[v.routineId]
+    };
+  });
+
+  return json_({
+    status: 'ok',
+    date: date,
+    athleteId: params.athleteId ? String(params.athleteId).trim() : '',
+    routines: hits,
+    version: VERSION
+  });
+}
+
+/* ---------- doPost:type で分岐 ---------- */
+function doPost(e) {
+  try {
+    var payload = JSON.parse(e.postData.contents);
+    var type = payload.type;
+    var out;
+    if (type === 'addAthlete') out = addAthlete_(payload);
+    else if (type === 'saveEntry') out = saveEntry_(payload);
+    else if (type === 'deleteEntry') out = deleteEntry_(payload);
+    else if (type === 'addFavorite') out = addFavorite_(payload);
+    else if (type === 'updateFavorite') out = updateFavorite_(payload);
+    else if (type === 'deleteFavorite') out = deleteFavorite_(payload);
+    else out = { status: 'error', message: 'unknown type: ' + type };
+    dropCache_(); return json_(out);
+  } catch (err) {
+    dropCache_(); return json_({ status: 'error', message: String(err) });
+  }
+}
+
+// エントリオブジェクトを、Entriesシートのヘッダー順に並べた1行に変換する。
+// date は先頭アポストロフィで文字列固定、skills は配列→カンマ結合、timestamp はサーバ時刻。
+function entryRowByHeaders_(head, entry, timestamp) {
+  return head.map(function (h) {
+    if (h === 'timestamp') return timestamp;
+    if (h === 'date') return "'" + (entry.date || '');
+    if (h === 'skills') return Array.isArray(entry.skills) ? entry.skills.join(',') : (entry.skills || '');
+    if (h === 'kakari') return entry.kakari ? 'true' : 'false';
+    var v = entry[h];
+    return (v === null || v === undefined) ? '' : v;
+  });
+}
+
+function addAthlete_(p) {
+  var sh = sheet_('Athletes');
+  sh.appendRow([p.id || '', p.name || '', p.createdAt || (new Date()).getTime()]);
+  return { status: 'ok', id: p.id };
+}
+
+function saveEntry_(p) {
+  var entry = p.entry || {};
+  var sh = sheet_('Entries');
+  var head = headers_(sh);
+  sh.appendRow(entryRowByHeaders_(head, entry, new Date()));
+  return { status: 'ok', id: entry.id };
+}
+
+/* ---------- ルーティーンの版の読み書き ---------- */
+
+/* RoutineVersions タブが無ければ作る。書き込みのときだけ呼ぶ。 */
+function ensureVersionsSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(VERSIONS_SHEET);
+  if (!sh) {
+    sh = ss.insertSheet(VERSIONS_SHEET);
+    sh.getRange(1, 1, 1, VERSIONS_HEADERS.length).setValues([VERSIONS_HEADERS]);
+    sh.setFrozenRows(1);
+    /* validFrom / validTo は書式なしテキストにしておく。
+       Sheetsが日付型に変えてしまうと、手で開いて直したときに表記が揺れるため。 */
+    sh.getRange(2, 4, sh.getMaxRows() - 1, 2).setNumberFormat('@');
+  }
+  return sh;
+}
+
+/* 版オブジェクトを、RoutineVersionsシートのヘッダー順に並べた1行に変換する。
+   日付は先頭アポストロフィで文字列固定(Entriesのdateと同じやり方)。 */
+function versionRowByHeaders_(head, v) {
+  return head.map(function (h) {
+    if (h === 'validFrom') return "'" + (v.validFrom || MIN_VALID_FROM);
+    if (h === 'validTo') return v.validTo ? ("'" + v.validTo) : '';
+    if (h === 'skillIds') return Array.isArray(v.skillIds) ? v.skillIds.join(',') : (v.skillIds || '');
+    var x = v[h];
+    return (x === null || x === undefined) ? '' : x;
+  });
+}
+
+function appendVersion_(sh, head, v) {
+  sh.appendRow(versionRowByHeaders_(head, v));
+}
+
+/* versionId → シートの行番号 の対応表。1回の読み出しで作る。 */
+function versionRowIndex_(sh, head) {
+  var idCol = head.indexOf('versionId');
+  var map = {};
+  if (idCol < 0) return map;
+  var last = sh.getLastRow();
+  if (last < 2) return map;
+  var col = sh.getRange(2, idCol + 1, last - 1, 1).getValues();
+  for (var i = 0; i < col.length; i++) {
+    var id = String(col[i][0]).trim();
+    if (id) map[id] = i + 2;   /* 見出し行のぶん +2 */
+  }
+  return map;
+}
+
+/* 1つのセルだけ書き換える小さなヘルパ。既存の行を丸ごと書き戻さないのは、
+   他の列を意図せず上書きしないため。 */
+function setVersionCell_(sh, head, rowNo, colName, value) {
+  var c = head.indexOf(colName);
+  if (c < 0) return;
+  sh.getRange(rowNo, c + 1).setValue(value);
+}
+
+function addFavorite_(p) {
+  var sh = sheet_('Favorites');
+  var ids = Array.isArray(p.skillIds) ? p.skillIds.join(',') : (p.skillIds || '');
+  sh.appendRow([p.id || '', p.name || '', ids, p.createdAt || (new Date()).getTime()]);
+  /* 新規登録の時点で初期版を1つ作る。版を持たないルーティーンを増やさないため。
+     古いアプリ(版を送ってこないHTML)から来た場合でも落ちないように、無ければ作らない。 */
+  if (p.version) {
+    var vsh = ensureVersionsSheet_();
+    appendVersion_(vsh, headers_(vsh), p.version);
+  }
+  return { status: 'ok', id: p.id };
+}
+
+/* ルーティーンの更新。
+   - Favorites の行(現行版のヘッド)を name / skillIds で更新する
+   - renameAllVersions が true なら、その routineId の全版の routineName を更新する
+     (名前だけの変更では版を増やさない、という決めのため)
+   - versionOps を順に適用する
+       { op:'close',  versionId, validTo, updatedAt }         … 期間を閉じる
+       { op:'update', versionId, routineName, skillIds, updatedAt } … その日の版を書き換える
+       { op:'add',    version:{...} }                          … 新しい版を足す
+   既存の版の行を「技構成ごと」上書きするのは 'update'(同じ日に2回編集した場合)だけで、
+   通常の編集では 'close' + 'add' になる。過去の構成は消さない。 */
+function updateFavorite_(p) {
+  var lock = LockService.getScriptLock();
+  /* 版の台帳は読んで書く処理なので、同時に走ると期間がずれる。10秒だけ待つ。 */
+  if (!lock.tryLock(10000)) {
+    return { status: 'error', message: 'busy: could not acquire lock' };
+  }
+  try {
+    var id = String(p.id || '').trim();
+    if (!id) return { status: 'error', message: 'id is required' };
+
+    /* --- Favorites のヘッドを更新 --- */
+    var fsh = sheet_('Favorites');
+    var fhead = headers_(fsh);
+    var fdata = fsh.getDataRange().getValues();
+    var idCol = fhead.indexOf('id');
+    var updatedHead = 0;
+    for (var r = 1; r < fdata.length; r++) {
+      if (String(fdata[r][idCol]).trim() !== id) continue;
+      var nameCol = fhead.indexOf('name');
+      var idsCol = fhead.indexOf('skillIds');
+      if (nameCol >= 0) fsh.getRange(r + 1, nameCol + 1).setValue(p.name || '');
+      if (idsCol >= 0) fsh.getRange(r + 1, idsCol + 1).setValue(Array.isArray(p.skillIds) ? p.skillIds.join(',') : (p.skillIds || ''));
+      updatedHead++;
+    }
+
+    /* --- 版の台帳を更新 --- */
+    var vsh = ensureVersionsSheet_();
+    var vhead = headers_(vsh);
+    var rowOf = versionRowIndex_(vsh, vhead);
+
+    if (p.renameAllVersions) {
+      var ridCol = vhead.indexOf('routineId');
+      var vlast = vsh.getLastRow();
+      if (ridCol >= 0 && vlast >= 2) {
+        var rids = vsh.getRange(2, ridCol + 1, vlast - 1, 1).getValues();
+        for (var i = 0; i < rids.length; i++) {
+          if (String(rids[i][0]).trim() === id) setVersionCell_(vsh, vhead, i + 2, 'routineName', p.name || '');
+        }
+      }
+    }
+
+    var ops = p.versionOps || [];
+    var applied = 0;
+    for (var k = 0; k < ops.length; k++) {
+      var op = ops[k];
+      if (op.op === 'add') {
+        appendVersion_(vsh, vhead, op.version);
+        if (op.version && op.version.versionId) rowOf[String(op.version.versionId)] = vsh.getLastRow();
+        applied++;
+      } else if (op.op === 'close') {
+        var rc = rowOf[String(op.versionId)];
+        if (rc) {
+          setVersionCell_(vsh, vhead, rc, 'validTo', op.validTo ? ("'" + op.validTo) : '');
+          if (op.updatedAt) setVersionCell_(vsh, vhead, rc, 'updatedAt', op.updatedAt);
+          applied++;
+        }
+      } else if (op.op === 'update') {
+        var ru = rowOf[String(op.versionId)];
+        if (ru) {
+          if (op.routineName !== undefined) setVersionCell_(vsh, vhead, ru, 'routineName', op.routineName || '');
+          if (op.skillIds !== undefined) setVersionCell_(vsh, vhead, ru, 'skillIds', Array.isArray(op.skillIds) ? op.skillIds.join(',') : (op.skillIds || ''));
+          if (op.updatedAt) setVersionCell_(vsh, vhead, ru, 'updatedAt', op.updatedAt);
+          applied++;
+        }
+      }
+    }
+    return { status: 'ok', id: id, head: updatedHead, ops: applied };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// id 一致行を削除する汎用関数(1列目=id 前提)
+function deleteById_(sheetName, id) {
+  var sh = sheet_(sheetName);
+  var data = sh.getDataRange().getValues();
+  var deleted = 0;
+  // 下から走査して行番号ズレを防ぐ
+  for (var r = data.length - 1; r >= 1; r--) {
+    if (String(data[r][0]).trim() === String(id).trim()) {
+      sh.deleteRow(r + 1);
+      deleted++;
+    }
+  }
+  return deleted;
+}
+
+function deleteEntry_(p) {
+  var n = deleteById_('Entries', p.id);
+  return { status: 'ok', id: p.id, deleted: n };
+}
+
+/* ルーティーンを削除しても RoutineVersions は消さない。
+   消すと、過去の大会がどの構成だったかを引けなくなるため。 */
+function deleteFavorite_(p) {
+  var n = deleteById_('Favorites', p.id);
+  return { status: 'ok', id: p.id, deleted: n };
+}
+
+/* =====================================================================
+   移行: 既存の登録ルーティーンに初期版を作る
+   ---------------------------------------------------------------------
+   エディタの実行メニューから1回だけ実行する。何度実行しても安全
+   (すでに版を持っているルーティーンは飛ばす)。
+   validFrom を十分に古い日付にするのは、過去の記録が版なしで孤立しないようにするため。
+   ===================================================================== */
+function migrateRoutineVersions() {
+  var favs = getFavorites_();
+  var vsh = ensureVersionsSheet_();
+  var vhead = headers_(vsh);
+  var existing = getRoutineVersions_();
+
+  var has = {};
+  existing.forEach(function (v) { has[v.routineId] = true; });
+
+  var now = (new Date()).getTime();
+  var created = [], skipped = [];
+  favs.forEach(function (f) {
+    if (has[f.id]) { skipped.push(f.name); return; }
+    var v = {
+      versionId: 'rv_mig_' + f.id,
+      routineId: f.id,
+      routineName: f.name,
+      validFrom: MIN_VALID_FROM,
+      validTo: '',
+      skillIds: f.skillIds,
+      createdAt: f.createdAt || now,
+      updatedAt: now
+    };
+    appendVersion_(vsh, vhead, v);
+    created.push(f.name);
+  });
+
+  dropCache_();
+  var msg = '初期版を作成: ' + (created.length ? created.join(', ') : 'なし') +
+    ' / すでに版あり(スキップ): ' + (skipped.length ? skipped.join(', ') : 'なし');
+  Logger.log(msg);
+  return msg;
+}

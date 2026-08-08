@@ -228,13 +228,29 @@
   .recent-actions button { font-size: 10px; padding: 5px 9px; border-radius: 6px; background: #17301F; border: 1px solid #234534; color: #9FBBAA; cursor: pointer; }
   .recent-actions button.danger { color: #FF9645; }
 
-  .favorite-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 10px; border-radius: 8px; background: #17301F; border: 1px solid #234534; }
+  /* ボタンが4つに増えたので、横1列ではなく「名前の下に折り返しで並べる」形にする(iPhone幅で収めるため) */
+  .favorite-item { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 9px 10px; border-radius: 8px; background: #17301F; border: 1px solid #234534; }
+  .favorite-item.editing { border-color: #22C17E; background: #133220; }
   .favorite-item + .favorite-item { margin-top: 6px; }
   .favorite-name { font-size: 12px; font-weight: 600; }
   .favorite-meta { font-size: 10px; color: #6E8779; margin-top: 2px; }
-  .favorite-actions { display: flex; gap: 6px; flex-shrink: 0; }
-  .favorite-actions button { font-size: 10px; padding: 5px 8px; border-radius: 6px; background: #10201A; border: 1px solid #234534; color: #22C17E; cursor: pointer; }
+  .favorite-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .favorite-actions button { font-size: 10px; padding: 5px 8px; border-radius: 6px; background: #10201A; border: 1px solid #234534; color: #22C17E; cursor: pointer; font-family: inherit; }
   .favorite-actions button.danger { color: #FF9645; }
+  .favorite-actions button.plain { color: #9FBBAA; }
+
+  /* ---- ルーティーンの版(いつからいつまで、どの技構成だったか)の一覧 ---- */
+  .ver-item { padding: 9px 10px; border-radius: 8px; background: #10201A; border: 1px solid #234534; }
+  .ver-item + .ver-item { margin-top: 6px; }
+  .ver-item.current { border-color: #22C17E; }
+  .ver-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .ver-range { font-size: 11.5px; font-weight: 700; color: #EAF3EC; }
+  .ver-badge { flex: 0 0 auto; font-size: 9.5px; padding: 2px 6px; border-radius: 999px; background: #133220; border: 1px solid #22C17E; color: #22C17E; }
+  .ver-badge.past { background: #17301F; border-color: #234534; color: #6E8779; }
+  .ver-skills { margin-top: 6px; font-size: 10.5px; line-height: 1.7; color: #B9D6C6; word-break: break-word; }
+  .ver-skills i { font-style: normal; color: #6E8779; }
+  .ver-group + .ver-group { margin-top: 16px; }
+  .ver-group-title { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
 
   .athlete-add-form { display: flex; gap: 8px; }
   .athlete-add-form input { flex: 1; }
@@ -617,6 +633,22 @@ var ENTRIES = [];
 function nextFavId() { return uid("f_"); }
 var FAVORITES = [];
 
+/* ---- ルーティーンの版(有効期間つきの技構成) ----
+   FAVORITES は「今この名前のルーティーンはこの構成」という現行版のヘッドで、
+   ROUTINE_VERSIONS が「いつからいつまで、どの構成だったか」の履歴台帳。
+
+   なぜ要るか: 大会のリザルトには1本目〜10本目の減点しか入っていないことがあり、
+   その位置がどの技だったかをエアログ側から復元したい。構成を編集したときに
+   1行を上書きしてしまうと「5月の大会のときの構成」が失われるため、
+   編集では既存の行を書き換えず、期間を閉じて新しい行を足す。
+
+   実施記録(ENTRIES)は保存時に構成を複製して持っている(routineName / skills / landings[].skillId)ので、
+   ここを何度編集しても過去の記録と技別集計には影響しない。 */
+function nextVerId() { return uid("rv_"); }
+var ROUTINE_VERSIONS = [];
+/* 移行で作る初期版の開始日。「これより前は分からない」を表すだけの十分に古い日付 */
+var MIN_VALID_FROM = "2000-01-01";
+
 /* ================= バックエンド(Googleスプレッドシート / Apps Script)接続 ================= */
 var API_URL = "https://script.google.com/macros/s/AKfycbwatMAHr8BWhnZqEKjDfQw-w0cCa3EUvqzEt5VH-roKYWjr0IaVarYx1vuidPl2P9Dn/exec";
 var BACKEND_READY = false;     // 初回ロード完了フラグ(未完了なら読み込み中画面)
@@ -630,13 +662,14 @@ var backendError = null;       // 直近の通信エラーメッセージ(あれ
    起動時はまずそれを表示して、裏で最新を取り直して差し替える。
    キャッシュはあくまで表示を早く出すためのもので、正はいつでもスプレッドシート側。 */
 var CACHE_KEY = "hannan-trampoline-log:data";
-var CACHE_VERSION = 1;   /* 保存形式を変えたときに +1 する。古いキャッシュは自動的に無視される */
+var CACHE_VERSION = 2;   /* 保存形式を変えたときに +1 する。古いキャッシュは自動的に無視される
+                            (2: ルーティーンの版 routineVersions を追加) */
 
 function saveDataCache() {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({
       v: CACHE_VERSION, savedAt: Date.now(),
-      athletes: ATHLETES, favorites: FAVORITES, entries: ENTRIES
+      athletes: ATHLETES, favorites: FAVORITES, entries: ENTRIES, routineVersions: ROUTINE_VERSIONS
     }));
   } catch (e) { /* 容量超過やプライベートブラウズでも動作は妨げない */ }
 }
@@ -655,6 +688,8 @@ function applyData(data) {
   ATHLETES = (data.athletes || []).slice().sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
   FAVORITES = (data.favorites || []).slice().sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
   ENTRIES = (data.entries || []).slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+  /* 版はバックエンドがまだ対応していない場合に備えて、無ければ空配列で進む(既存機能は版に依存しない) */
+  ROUTINE_VERSIONS = normalizeVersions(data.routineVersions || []);
   restoreSavedAthlete();   // 前回選んだ選手を選択状態に戻す
 }
 
@@ -766,6 +801,10 @@ var S = {
   mode: "single",
   single: emptySingleDraft(),
   routine: emptyRoutineDraft(),
+  routineEditId: null,         /* 編集中の登録ルーティーンid。null なら新規登録 */
+  routineValidFrom: todayStr(),/* 「この構成はいつから使っているか」。既定は今日、過去に遡って入れられる */
+  routineDefError: null,       /* 版の期間が重なるなど、登録を止めた理由 */
+  versionHistoryId: null,      /* 版の履歴画面(読み取り専用)。routineId または "all" */
   routineExec: emptyRoutineExecDraft(),
   tScoreMode: "stepped",
   tScoreFixedCoef: "",
@@ -1421,26 +1460,232 @@ function routineTotalDD(skillsArr) {
   }, 0);
 }
 
+/* ================= ルーティーンの版(有効期間つきの技構成) =================
+   1つの版は { versionId, routineId, routineName, validFrom, validTo, skillIds[], createdAt, updatedAt }。
+   validTo が空文字なら「現行版(今も使っている構成)」。日付はすべて "YYYY-MM-DD" の文字列で、
+   文字列比較がそのまま日付比較になる形にそろえてある。 */
+
+/* 日付文字列を1日戻す。版を閉じるとき validTo に「変更日の前日」を入れるために使う。
+   月またぎ・うるう年をToDateに任せるため、UTC正午を基準にして時差でずれないようにする。 */
+function prevDayStr(dateStr) {
+  var p = String(dateStr || "").split("-");
+  if (p.length !== 3) return dateStr;
+  var d = new Date(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 12, 0, 0));
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+function isDateStr(s) { return /^\d{4}-\d{2}-\d{2}$/.test(String(s || "")); }
+
+/* バックエンドやキャッシュから来た版を、扱いやすい形にそろえる。
+   壊れた行(routineId が無い等)は落とす。落としても既存機能は動く。 */
+function normalizeVersions(arr) {
+  var out = [];
+  for (var i = 0; i < arr.length; i++) {
+    var v = arr[i] || {};
+    if (!v.routineId || !v.versionId) continue;
+    var ids = v.skillIds;
+    if (typeof ids === "string") { try { ids = JSON.parse(ids); } catch (e) { ids = String(ids).split(","); } }
+    if (!Array.isArray(ids)) ids = [];
+    out.push({
+      versionId: String(v.versionId),
+      routineId: String(v.routineId),
+      routineName: v.routineName == null ? "" : String(v.routineName),
+      validFrom: isDateStr(v.validFrom) ? String(v.validFrom) : MIN_VALID_FROM,
+      validTo: isDateStr(v.validTo) ? String(v.validTo) : "",
+      skillIds: ids.map(function (x) { return String(x).trim(); }).filter(function (x) { return !!x; }),
+      createdAt: Number(v.createdAt) || 0,
+      updatedAt: Number(v.updatedAt) || 0
+    });
+  }
+  return out.sort(function (a, b) {
+    if (a.routineId !== b.routineId) return a.routineId < b.routineId ? -1 : 1;
+    return a.validFrom < b.validFrom ? -1 : (a.validFrom > b.validFrom ? 1 : 0);
+  });
+}
+
+/* あるルーティーンの版を、開始日の古い順で返す */
+function versionsOf(routineId) {
+  return ROUTINE_VERSIONS.filter(function (v) { return v.routineId === routineId; })
+    .sort(function (a, b) { return a.validFrom < b.validFrom ? -1 : (a.validFrom > b.validFrom ? 1 : 0); });
+}
+/* 現行版(validTo が空)。無ければ最後に始まった版を返す */
+function currentVersionOf(routineId) {
+  var vs = versionsOf(routineId);
+  for (var i = 0; i < vs.length; i++) { if (!vs[i].validTo) return vs[i]; }
+  return vs.length ? vs[vs.length - 1] : null;
+}
+/* その日に有効だった版。別アプリ向けの照会と、画面の履歴表示の両方でこれを使う */
+function versionAt(routineId, dateStr) {
+  var vs = versionsOf(routineId);
+  for (var i = 0; i < vs.length; i++) {
+    var v = vs[i];
+    if (v.validFrom <= dateStr && (!v.validTo || dateStr <= v.validTo)) return v;
+  }
+  return null;
+}
+/* 技構成が変わったかどうか。並べ替えも「変わった」とみなす。
+   大会の1本目〜10本目は位置で技を特定するので、順番が変われば貼る技名が変わるため。 */
+function sameSkillIds(a, b) {
+  a = a || []; b = b || [];
+  if (a.length !== b.length) return false;
+  for (var i = 0; i < a.length; i++) { if (a[i] !== b[i]) return false; }
+  return true;
+}
+function versionRangeLabel(v) {
+  return v.validTo ? (v.validFrom + " 〜 " + v.validTo) : (v.validFrom + " 〜 (現在)");
+}
+/* 版の技構成を「1.タックバック / 2.…」の形にする。技が見つからない場合も描画は続ける */
+function versionSkillListHtml(v) {
+  if (!v.skillIds.length) return '<i>技の記録なし</i>';
+  return v.skillIds.map(function (sid, i) {
+    var sk = skillById(sid);
+    return '<i>' + (i + 1) + ".</i> " + escHtml(sk ? sk.name : "(不明な技 " + sid + ")");
+  }).join(" ／ ");
+}
+
 // ---- ルーティーンの「登録」(技構成を名前付きで登録するカード。実施記録とは完全に独立) ----
 function routineDefValid() {
   var name = (S.routine.name || "").trim();
   var validSkills = S.routine.skills.filter(function (r) { return !!r.skillId; });
   return !!name && validSkills.length > 0;
 }
+/* 下書きの技構成(空行を除いた skillId の並び) */
+function draftSkillIds() {
+  return S.routine.skills.filter(function (r) { return !!r.skillId; }).map(function (r) { return r.skillId; });
+}
+/* 「この構成はいつから使っているか」。既定は今日で、過去に遡って入れられる */
+function setRoutineValidFrom(v) { S.routineValidFrom = v; S.routineDefError = null; render(); }
+
+/* 編集中かどうかで登録ボタンの振る舞いが変わるだけで、入口は1つにしておく */
 function saveRoutineDef() {
   if (!routineDefValid()) return;
+  if (S.routineEditId) { updateRoutineDef(); return; }
   var name = (S.routine.name || "").trim();
-  var validSkills = S.routine.skills.filter(function (r) { return !!r.skillId; });
   var favId = nextFavId();
   var favCreatedAt = Date.now();
-  var favSkillIds = validSkills.map(function (r) { return r.skillId; });
+  var favSkillIds = draftSkillIds();
+  var vf = isDateStr(S.routineValidFrom) ? S.routineValidFrom : todayStr();
+  var version = {
+    versionId: nextVerId(), routineId: favId, routineName: name,
+    validFrom: vf, validTo: "", skillIds: favSkillIds.slice(),
+    createdAt: favCreatedAt, updatedAt: favCreatedAt
+  };
   FAVORITES.push({ id: favId, name: name, skillIds: favSkillIds, createdAt: favCreatedAt });
+  /* 新規登録の時点で必ず初期版を1つ作る。版を持たないルーティーンを増やさないため */
+  ROUTINE_VERSIONS.push(version);
   saveDataCache();
-  syncToBackend({ type: "addFavorite", id: favId, name: name, skillIds: favSkillIds, createdAt: favCreatedAt }, "ルーティーン登録");
-  S.routine = emptyRoutineDraft();
+  syncToBackend({ type: "addFavorite", id: favId, name: name, skillIds: favSkillIds, createdAt: favCreatedAt, version: version }, "ルーティーン登録");
+  exitRoutineEdit();
   S.routineDefSavingFlash = true;
   render();
   setTimeout(function () { S.routineDefSavingFlash = false; render(); }, 900);
+}
+
+/* 既存ルーティーンの編集。既存の版の行は書き換えず、期間を閉じて新しい版を足す。
+   名前だけの変更(技構成が同じ)では版を増やさず、名前だけを全版に反映する。 */
+function updateRoutineDef() {
+  var fav = FAVORITES.filter(function (f) { return f.id === S.routineEditId; })[0];
+  if (!fav) { exitRoutineEdit(); render(); return; }
+  var name = (S.routine.name || "").trim();
+  var newSkillIds = draftSkillIds();
+  var vs = versionsOf(fav.id);
+  var cur = currentVersionOf(fav.id);
+  var now = Date.now();
+
+  /* 技構成が同じ = 名前だけの変更(または変更なし)。版は増やさない */
+  if (cur && sameSkillIds(cur.skillIds, newSkillIds)) {
+    if (fav.name === name) { exitRoutineEdit(); render(); return; }   /* 何も変わっていない */
+    fav.name = name;
+    for (var i = 0; i < vs.length; i++) { vs[i].routineName = name; vs[i].updatedAt = now; }
+    saveDataCache();
+    syncToBackend({ type: "updateFavorite", id: fav.id, name: name, skillIds: newSkillIds, renameAllVersions: true, versionOps: [] }, "ルーティーン名の変更");
+    finishRoutineDefSave();
+    return;
+  }
+
+  var vf = isDateStr(S.routineValidFrom) ? S.routineValidFrom : todayStr();
+
+  /* 遡って登録するとき、その日より後に始まる版が既にあると期間が重なって
+     「その日の構成」が一意に決まらなくなる。保存を止めて理由を出す。 */
+  var conflict = null;
+  for (var j = 0; j < vs.length; j++) { if (vs[j].validFrom > vf) { conflict = vs[j]; break; } }
+  if (conflict) {
+    S.routineDefError = "「" + conflict.validFrom + "から」の版が既にあるので、" + vf + " からの構成としては登録できません。" +
+      "期間が重なると、その日の構成がどちらか決められなくなります。" + conflict.validFrom + " 以降の日付を選んでください。";
+    render();
+    return;
+  }
+
+  var ops = [];
+  if (cur && cur.validFrom === vf) {
+    /* 同じ日に2回目の編集。版を増やすと validTo が validFrom より前の行ができてしまうので、
+       その日の版そのものを書き換える。 */
+    cur.skillIds = newSkillIds.slice();
+    cur.routineName = name;
+    cur.updatedAt = now;
+    ops.push({ op: "update", versionId: cur.versionId, routineName: name, skillIds: newSkillIds.slice(), updatedAt: now });
+  } else {
+    if (cur) {
+      cur.validTo = prevDayStr(vf);      /* 現行版を「変更日の前日」で閉じる */
+      cur.updatedAt = now;
+      ops.push({ op: "close", versionId: cur.versionId, validTo: cur.validTo, updatedAt: now });
+    } else {
+      /* 版をまだ1つも持たないルーティーン(移行前のデータ)。
+         過去の記録が版なしで孤立しないよう、旧構成の初期版をここで作ってから閉じる。 */
+      var seed = {
+        versionId: nextVerId(), routineId: fav.id, routineName: fav.name,
+        validFrom: MIN_VALID_FROM, validTo: prevDayStr(vf), skillIds: (fav.skillIds || []).slice(),
+        createdAt: fav.createdAt || now, updatedAt: now
+      };
+      ROUTINE_VERSIONS.push(seed);
+      ops.push({ op: "add", version: seed });
+    }
+    var fresh = {
+      versionId: nextVerId(), routineId: fav.id, routineName: name,
+      validFrom: vf, validTo: "", skillIds: newSkillIds.slice(),
+      createdAt: now, updatedAt: now
+    };
+    ROUTINE_VERSIONS.push(fresh);
+    ops.push({ op: "add", version: fresh });
+  }
+
+  fav.name = name;
+  fav.skillIds = newSkillIds.slice();
+  ROUTINE_VERSIONS = normalizeVersions(ROUTINE_VERSIONS);
+  saveDataCache();
+  syncToBackend({ type: "updateFavorite", id: fav.id, name: name, skillIds: newSkillIds, renameAllVersions: false, versionOps: ops }, "ルーティーンの更新");
+  finishRoutineDefSave();
+}
+
+function finishRoutineDefSave() {
+  exitRoutineEdit();
+  S.routineDefSavingFlash = true;
+  render();
+  setTimeout(function () { S.routineDefSavingFlash = false; render(); }, 900);
+}
+/* 編集モードを抜けて下書きを空に戻す */
+function exitRoutineEdit() {
+  S.routine = emptyRoutineDraft();
+  S.routineEditId = null;
+  S.routineValidFrom = todayStr();
+  S.routineDefError = null;
+}
+function cancelRoutineEdit() { exitRoutineEdit(); render(); }
+
+/* 既存ルーティーンを編集する(同じ id のまま構成を差し替える) */
+function startEditFavorite(id) {
+  var fav = FAVORITES.filter(function (f) { return f.id === id; })[0];
+  if (!fav) return;
+  S.routineEditId = id;
+  S.routine.name = fav.name;
+  S.routine.skills = fav.skillIds.map(function (sid) {
+    var sk = skillById(sid);
+    return { family: sk ? sk.family : "forward", skillId: sid };
+  });
+  S.routineValidFrom = todayStr();
+  S.routineDefError = null;
+  S.confirmDeleteFavId = null;
+  render();
 }
 
 // ---- ルーティーンの「実施記録」(登録済みルーティーンを選んでタイム・Tスコア・動画を記録) ----
@@ -1478,20 +1723,28 @@ function saveRoutineExecEntry() {
   setTimeout(function () { S.routineExecSavingFlash = false; render(); }, 900);
 }
 
+/* 既存の構成を下書きに写して「別のルーティーンとして」登録する(自由1から自由2を作るような使い方)。
+   編集(startEditFavorite)と違い、保存すると新しい id のルーティーンが増える。 */
 function loadFavorite(id) {
   var fav = FAVORITES.filter(function (f) { return f.id === id; })[0];
   if (!fav) return;
+  S.routineEditId = null;
   S.routine.name = fav.name;
   S.routine.skills = fav.skillIds.map(function (sid) {
     var sk = skillById(sid);
     return { family: sk ? sk.family : "forward", skillId: sid };
   });
+  S.routineValidFrom = todayStr();
+  S.routineDefError = null;
   render();
 }
 function askDeleteFavorite(id) { S.confirmDeleteFavId = id; render(); }
 function cancelDeleteFavorite() { S.confirmDeleteFavId = null; render(); }
 function confirmDeleteFavorite(id) {
   FAVORITES = FAVORITES.filter(function (f) { return f.id !== id; });
+  /* 版の履歴は消さない。消すと過去の大会がどの構成だったかを引けなくなるため。
+     一覧から消えたルーティーンの版は「版の履歴」画面に(削除済み)として残る。 */
+  if (S.routineEditId === id) exitRoutineEdit();
   saveDataCache();
   syncToBackend({ type: "deleteFavorite", id: id }, "ルーティーン削除");
   S.confirmDeleteFavId = null;
@@ -1786,14 +2039,25 @@ function renderFavoritesSection() {
   if (!FAVORITES.length) return '<div class="empty-card">保存されたお気に入りルーティーンはまだありません</div>';
   return FAVORITES.map(function (f) {
     var confirming = S.confirmDeleteFavId === f.id;
+    var editing = S.routineEditId === f.id;
     var total = routineTotalDD(f.skillIds.map(function (id) { return { skillId: id }; }));
+    var cur = currentVersionOf(f.id);
+    /* 現行版の有効開始日。移行前で版をまだ持たないルーティーンは「—」を出して、
+       画面が壊れないようにする(編集すればその場で初期版が作られる)。 */
+    var fromLabel = cur ? (cur.validFrom === MIN_VALID_FROM ? "以前から" : cur.validFrom + "から") : "開始日 —";
+    var verCount = versionsOf(f.id).length;
     return (
-      '<div class="favorite-item"><div><div class="favorite-name">' + escHtml(f.name) + "</div>" +
-      '<div class="favorite-meta">技' + f.skillIds.length + "本 ・合計DD " + fmtDD(total) + "</div></div>" +
+      '<div class="favorite-item' + (editing ? " editing" : "") + '">' +
+      '<div><div class="favorite-name">' + escHtml(f.name) + (editing ? '　<span style="font-size:10px;color:' + COLORS.accent + '">編集中</span>' : "") + "</div>" +
+      '<div class="favorite-meta">技' + f.skillIds.length + "本 ・合計DD " + fmtDD(total) + "</div>" +
+      '<div class="favorite-meta">この構成は ' + escHtml(fromLabel) + (verCount > 1 ? " ・版" + verCount + "件" : "") + "</div></div>" +
       '<div class="favorite-actions">' +
       (confirming
-        ? '<button class="danger" onclick="confirmDeleteFavorite(\'' + f.id + "')\">削除確定</button><button onclick=\"cancelDeleteFavorite()\">戻る</button>"
-        : '<button onclick="loadFavorite(\'' + f.id + "')\">呼び出す</button><button class=\"danger\" onclick=\"askDeleteFavorite('" + f.id + "')\">削除</button>") +
+        ? '<button class="danger" onclick="confirmDeleteFavorite(\'' + f.id + "')\">削除確定</button><button class=\"plain\" onclick=\"cancelDeleteFavorite()\">戻る</button>"
+        : '<button onclick="startEditFavorite(\'' + f.id + "')\">編集</button>" +
+          '<button class="plain" onclick="loadFavorite(\'' + f.id + "')\">複製</button>" +
+          '<button class="plain" onclick="openVersionHistory(\'' + f.id + "')\">版の履歴</button>" +
+          '<button class="danger" onclick="askDeleteFavorite(\'' + f.id + "')\">削除</button>") +
       "</div></div>"
     );
   }).join("");
@@ -1898,16 +2162,48 @@ function renderRoutineDefCard() {
   var nameOk = !!(S.routine.name || "").trim();
   var hasSkill = S.routine.skills.some(function (r) { return !!r.skillId; });
   var blockReason = !nameOk ? "ルーティーン名を入力すると登録できます" : (!hasSkill ? "技を1つ以上選択すると登録できます" : "");
+
+  var editing = !!S.routineEditId;
+  var editFav = editing ? FAVORITES.filter(function (f) { return f.id === S.routineEditId; })[0] : null;
+  if (editing && !editFav) { editing = false; }     /* 編集中に別端末で消された場合の保険 */
+
+  /* 編集中は「版が増えるのか増えないのか」を保存前に見せる。
+     技構成が同じなら名前だけの変更として扱い、版は増やさない。 */
+  var verNote = "";
+  if (editing) {
+    var cur = currentVersionOf(editFav.id);
+    if (cur && sameSkillIds(cur.skillIds, draftSkillIds())) {
+      verNote = "技構成は変わっていないので、版は増えません(名前の変更だけが反映されます)。";
+    } else {
+      verNote = "技構成が変わっています。" + escHtml(S.routineValidFrom || todayStr()) + " から使う新しい版として記録し、" +
+        (cur ? "今の版は " + escHtml(prevDayStr(S.routineValidFrom || todayStr())) + " で締めます。" : "それ以前の構成は初期版として残します。") +
+        "過去の実施記録は保存時のまま変わりません。";
+    }
+  }
+
+  var validFromField = (
+    '<div><span class="field-label">この構成はいつから使っているか</span>' +
+    '<input class="date-input" type="date" value="' + escAttr(S.routineValidFrom || todayStr()) + '" onchange="setRoutineValidFrom(this.value)" />' +
+    '<div class="sub-label">既定は今日です。前から使っていた構成なら、その日付まで遡って入れられます。</div></div>'
+  );
+
   return (
     '<div class="card raised section">' +
-    '<div><span class="field-label">ルーティーンを登録</span></div>' +
+    '<div><span class="field-label">' + (editing ? "ルーティーンを編集" : "ルーティーンを登録") + "</span>" +
+    (editing ? '<div class="sub-label">「' + escHtml(editFav.name) + "」を編集しています。</div>" : "") + "</div>" +
     '<div><span class="field-label">ルーティーン名(必須)</span><input id="in-routine-def-name" class="text-input" type="text" placeholder="例:予選ルーティーン" value="' + escAttr(S.routine.name) + '" oninput="setRoutineName(this.value)" /></div>' +
     '<div class="routine-total-bar"><span class="label">合計難度点(DD)・技' + S.routine.skills.length + "本</span><span class=\"value\">" + fmtDD(total) + "</span></div>" +
     '<div class="tech-row-list">' + rowsHtml + "</div>" +
     '<button class="add-row-btn"' + (atMax ? " disabled" : "") + ' onclick="addRoutineSkillRow()">' + iconPlus(14, COLORS.accent) + "<span>技を追加 (" + S.routine.skills.length + "/" + MAX_ROUTINE_SKILLS + ")</span></button>" +
+    validFromField +
+    (verNote ? '<div class="landing-hint">' + verNote + "</div>" : "") +
     '<div><span class="field-label">登録済みルーティーン</span><div style="margin-top:8px;">' + renderFavoritesSection() + "</div></div>" +
+    (ROUTINE_VERSIONS.length ? '<button class="add-row-btn" onclick="openVersionHistory(\'all\')"><span>版の履歴をすべて見る</span></button>' : "") +
+    (S.routineDefError ? '<div class="date-warning">⚠️ ' + escHtml(S.routineDefError) + "</div>" : "") +
     '<div class="sub-label" id="routine-def-note" style="color:' + COLORS.amber + ';' + (blockReason ? "" : "display:none;") + '">' + (blockReason ? "※" + blockReason : "") + "</div>" +
-    '<button id="routine-def-save" class="save-btn' + (S.routineDefSavingFlash ? " flash" : "") + '"' + (!nameOk || !hasSkill ? " disabled" : "") + ' onclick="saveRoutineDef()">' + (S.routineDefSavingFlash ? iconCheck(16, "#052A1B") + "<span>登録しました</span>" : "<span>ルーティーンを登録</span>") + "</button>" +
+    '<button id="routine-def-save" class="save-btn' + (S.routineDefSavingFlash ? " flash" : "") + '"' + (!nameOk || !hasSkill ? " disabled" : "") + ' onclick="saveRoutineDef()">' +
+    (S.routineDefSavingFlash ? iconCheck(16, "#052A1B") + "<span>" + (editing ? "更新しました" : "登録しました") + "</span>" : "<span>" + (editing ? "この構成に更新" : "ルーティーンを登録") + "</span>") + "</button>" +
+    (editing ? '<button class="add-row-btn" onclick="cancelRoutineEdit()"><span>編集をやめる</span></button>' : "") +
     "</div>"
   );
 }
@@ -2213,6 +2509,118 @@ function renderLandingViewModal() {
     '<button class="save-btn" onclick="closeLandingView()">閉じる</button>' +
     "</div></div>"
   );
+}
+
+/* ---- ルーティーンの版の履歴(読み取り専用) ----
+   ここでは何も保存しない。過去にどの構成を使っていたかを確認するだけの画面。 */
+function openVersionHistory(id) { S.versionHistoryId = id; render(); }
+function closeVersionHistory() { S.versionHistoryId = null; render(); }
+
+/* 版を持つ routineId を、今の一覧の並び(登録順)→ 削除済みの順に返す */
+function routineIdsWithVersions() {
+  var seen = {}, out = [];
+  FAVORITES.forEach(function (f) { if (versionsOf(f.id).length) { seen[f.id] = true; out.push(f.id); } });
+  ROUTINE_VERSIONS.forEach(function (v) { if (!seen[v.routineId]) { seen[v.routineId] = true; out.push(v.routineId); } });
+  return out;
+}
+function routineDisplayName(routineId) {
+  var fav = FAVORITES.filter(function (f) { return f.id === routineId; })[0];
+  if (fav) return fav.name;
+  var vs = versionsOf(routineId);
+  return (vs.length ? vs[vs.length - 1].routineName : "(不明なルーティーン)") + "(削除済み)";
+}
+
+function renderVersionGroupHtml(routineId) {
+  var vs = versionsOf(routineId).slice().reverse();   /* 新しい版を上に */
+  if (!vs.length) return "";
+  var items = vs.map(function (v) {
+    var isCur = !v.validTo;
+    var total = routineTotalDD(v.skillIds.map(function (sid) { return { skillId: sid }; }));
+    return '<div class="ver-item' + (isCur ? " current" : "") + '">' +
+      '<div class="ver-head"><span class="ver-range">' + escHtml(versionRangeLabel(v)) + "</span>" +
+      '<span class="ver-badge' + (isCur ? "" : " past") + '">' + (isCur ? "現行" : "過去") + "</span></div>" +
+      '<div class="favorite-meta">技' + v.skillIds.length + "本 ・合計DD " + fmtDD(total) + "</div>" +
+      '<div class="ver-skills">' + versionSkillListHtml(v) + "</div>" +
+      "</div>";
+  }).join("");
+  return '<div class="ver-group"><div class="ver-group-title">' + escHtml(routineDisplayName(routineId)) + "</div>" + items + "</div>";
+}
+
+function renderVersionHistoryModal() {
+  if (!S.versionHistoryId) return "";
+  var ids = S.versionHistoryId === "all" ? routineIdsWithVersions() : [S.versionHistoryId];
+  var body = ids.map(renderVersionGroupHtml).join("");
+  if (!body) body = '<div class="empty-card">まだ版の記録がありません。ルーティーンを編集すると、そのときから版が残ります。</div>';
+  return (
+    '<div class="landing-modal-overlay"><div class="landing-modal-box">' +
+    '<div class="landing-modal-head"><div><div class="landing-modal-title">ルーティーンの版の履歴</div>' +
+    '<div class="sub-label">' + (S.versionHistoryId === "all" ? "登録・削除したものすべて" : escHtml(routineDisplayName(S.versionHistoryId))) + "</div></div>" +
+    '<button class="landing-modal-close" onclick="closeVersionHistory()">閉じる</button></div>' +
+    body +
+    '<button class="add-row-btn" onclick="downloadRoutineVersionsJson()"><span>この履歴をJSONで書き出す</span></button>' +
+    '<div class="landing-note">※ この画面は見返すためのものです。ここでは何も保存しません。<br>' +
+    "※ 技構成を変えると新しい版になり、その前の版は「〜(変更日の前日)」で締められます。名前だけを変えても版は増えません。<br>" +
+    "※ 実施記録は保存したときの構成を記録ごとに持っているので、ここで版が増えても過去の記録と技別集計は変わりません。<br>" +
+    "※ 書き出したJSONは、大会リザルトの1本目〜10本目に技名を当てるために使えます。</div>" +
+    '<button class="save-btn" onclick="closeVersionHistory()">閉じる</button>' +
+    "</div></div>"
+  );
+}
+
+/* ---- 別アプリ向けの書き出し ----
+   Apps Script 側は技名を持っていない(技カタログはこのファイルの中だけ)ので、
+   技名・難度点まで解決したJSONはこちら側で作る。 */
+function buildRoutineVersionsExport() {
+  return {
+    app: "hannan-trampoline-log",
+    exportedAt: new Date().toISOString(),
+    format: "routineVersions/1",
+    note: "validTo が空の版が現行。ある日付の構成は validFrom <= 日付 <= validTo(空なら無期限) で引く。",
+    routines: routineIdsWithVersions().map(function (rid) {
+      var fav = FAVORITES.filter(function (f) { return f.id === rid; })[0];
+      return {
+        routineId: rid,
+        routineName: routineDisplayName(rid),
+        deleted: !fav,
+        versions: versionsOf(rid).map(function (v) {
+          return {
+            versionId: v.versionId,
+            validFrom: v.validFrom,
+            validTo: v.validTo,
+            skillIds: v.skillIds.slice(),
+            skills: v.skillIds.map(function (sid, i) {
+              var sk = skillById(sid);
+              return {
+                order: i + 1, skillId: sid,
+                name: sk ? sk.name : null,
+                numeric: sk ? (sk.numeric || "") : null,
+                dd: sk ? sk.dd : null
+              };
+            })
+          };
+        })
+      };
+    })
+  };
+}
+function downloadRoutineVersionsJson() {
+  try {
+    var text = JSON.stringify(buildRoutineVersionsExport(), null, 2);
+    var blob = new Blob([text], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "routine-versions_" + todayStr() + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    /* 端末が保存し終わる前に取り消すと落ちることがあるので、少し置いてから解放する */
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+  } catch (e) {
+    backendError = "JSONの書き出しに失敗しました。";
+    console.error("downloadRoutineVersionsJson failed", e);
+    render();
+  }
 }
 
 /* ---- 選手ピッカー・記録ページ共通部品 ---- */
@@ -3076,7 +3484,8 @@ function renderApp() {
     renderSingleDetailModal() +
     renderPlatformDetailModal() +
     renderLandingModal() +
-    renderLandingViewModal()
+    renderLandingViewModal() +
+    renderVersionHistoryModal()
   );
 }
 
