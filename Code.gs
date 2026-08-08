@@ -10,12 +10,14 @@
                   videoSuccessName, videoSuccessUrl, videoFailName, videoFailUrl,
                     reps, repResults  (repsは総本数。repResultsは1本=1文字で ○成功/×失敗/-未選択)
                   landings (JSON文字列。1本ごとに1要素、未記録の本は null)
-     - Favorites: id, name, skillIds, createdAt
+     - Favorites: id, athleteId, name, skillIds, createdAt
                   ※「今この名前のルーティーンはこの構成」という現行版のヘッド。
-     - RoutineVersions: versionId, routineId, routineName, validFrom, validTo,
+                    athleteId は所有者。空の行は「所有者なし」で、分析用の照会からは返さない。
+     - RoutineVersions: versionId, routineId, athleteId, routineName, validFrom, validTo,
                         skillIds, createdAt, updatedAt
                   ※「いつからいつまで、どの構成だったか」の履歴台帳。
                     validTo が空なら現行版。routineId は Favorites の id。
+                    athleteId は所有者。Favorites 側が削除されても引けるよう、版にも持たせる。
                     大会リザルトの1本目〜10本目がどの技だったかを後から復元するために使う。
                     編集では既存の行を書き換えず、期間を閉じて新しい行を足す。
    ヘッダー行は「名前」で参照するので、列順を変えても動くが名前は変えないこと。
@@ -23,15 +25,27 @@
 
    ★初回だけ、エディタから migrateRoutineVersions() を1回実行すること。
      既存の登録ルーティーンに validFrom=2000-01-01 の初期版を作る(何度実行しても安全)。
+   ★2026-08-08 の所有者付与は migrateRoutineOwners() を1回実行すること。
+     Favorites / RoutineVersions に athleteId 列を足し、既存3件に所有者を入れる。
    ===================================================================== */
 
 var TZ = 'Asia/Tokyo';
-var VERSION = 2;
+var VERSION = 3;
 
 /* 移行で作る初期版の開始日。「これより前は分からない」を表すだけの十分に古い日付 */
 var MIN_VALID_FROM = '2000-01-01';
 var VERSIONS_SHEET = 'RoutineVersions';
-var VERSIONS_HEADERS = ['versionId', 'routineId', 'routineName', 'validFrom', 'validTo', 'skillIds', 'createdAt', 'updatedAt'];
+var VERSIONS_HEADERS = ['versionId', 'routineId', 'athleteId', 'routineName', 'validFrom', 'validTo', 'skillIds', 'createdAt', 'updatedAt'];
+var FAVORITES_SHEET = 'Favorites';
+
+/* 2026-08-08 の所有者付与。データからは所有者を復元できないので、ここに明示して1回だけ流す。
+   自由1(DD8.6) は 2026-05-02 第38回大阪府年齢別 での瑛斗の2本目のDと一致することから城瑛斗と確定。
+   自由2(DD9.0) はその次に上げる構成。検証用テストルーティーンは動作確認用。 */
+var OWNER_ASSIGNMENT = {
+  'f_msea35j7j039y5': 'ath_ms9qta3uyuxyzs',   /* 自由1 → 城瑛斗 */
+  'f_msea9apn0ahahc': 'ath_ms9qta3uyuxyzs',   /* 自由2 → 城瑛斗 */
+  'f_msjvufaf344ees': 'ath_msagy6o6efw06m'    /* 検証用テストルーティーン(改名) → テスト */
+};
 
 /* ---------- 共通ヘルパ ---------- */
 function json_(obj) {
@@ -79,10 +93,10 @@ function dateStrOrEmpty_(v) {
    組み立てたJSONを短時間キャッシュし、書き込みのたびに捨てる。
    CacheServiceの1キーの上限は100KBなので、それを超えるサイズになったらキャッシュしない
    (記録が増えても壊れず、単に従来どおりの速度に戻るだけ)。 */
-/* キーに _v2 を付けているのは、返す中身に routineVersions を足したため。
+/* キーに _v3 を付けているのは、返す中身に athleteId を足したため。
    デプロイ直後に古い形のキャッシュが最大5分ぶん残るのを避ける。
    ★今後もデータの形を変えたらこのキーを上げること。 */
-var CACHE_KEY_ALL = 'allData_v2';
+var CACHE_KEY_ALL = 'allData_v3';
 var CACHE_TTL_SEC = 300;      /* 書き込み時に必ず捨てるので、これは取りこぼし用の保険 */
 var CACHE_MAX_BYTES = 90000;
 
@@ -148,6 +162,8 @@ function getFavorites_() {
     head.forEach(function (h, i) { o[h] = row[i]; });
     return {
       id: String(o.id).trim(),
+      /* 列がまだ無い/空のときは ''。呼び出し側は「所有者なし」として扱う */
+      athleteId: o.athleteId === null || o.athleteId === undefined ? '' : String(o.athleteId).trim(),
       name: o.name === null || o.name === undefined ? '' : String(o.name),
       skillIds: splitIds_(o.skillIds),
       createdAt: numOrNull_(o.createdAt) || 0
@@ -170,6 +186,7 @@ function getRoutineVersions_() {
     return {
       versionId: String(o.versionId).trim(),
       routineId: String(o.routineId).trim(),
+      athleteId: o.athleteId === null || o.athleteId === undefined ? '' : String(o.athleteId).trim(),
       routineName: o.routineName === null || o.routineName === undefined ? '' : String(o.routineName),
       validFrom: dateStrOrEmpty_(o.validFrom) || MIN_VALID_FROM,
       validTo: dateStrOrEmpty_(o.validTo),
@@ -227,18 +244,48 @@ function getEntries_() {
    GET ?type=routineVersions
      → 全ルーティーンの全版をそのまま返す(まとめて取り込みたいとき)。
 
-   athleteId は受け取るが、いまは使わない。
-   登録ルーティーンが全選手共通(Favorites に athleteId が無い)ため。
-   将来ルーティーンを選手ごとに分けたら、ここで絞り込む。
+   ★athleteId は必須。この照会の目的は「その選手が、その大会日に、どの構成だったか」なので、
+     選手を指定しない呼び出しは答えようがない。省略はエラーにする。
+
+   ★所有者が確定していない版(athleteId が空)は返さない。
+     分析側は「その選手の構成」しか使えない。フラグを付けて返すと、下流で
+     フラグを見落とした実装が必ず出る。答えられないものは返さない。
+     アプリのUI側は doGet の全データを使うので、UIでの表示には影響しない。
 
    技名は返さない。技カタログ(s1〜s144の名前・難度点)はアプリのHTMLの中だけにあり、
    こちら側は持っていないため。技名つきが要る場合は、アプリの
    「版の履歴」→「この履歴をJSONで書き出す」で出したJSONを使う。 */
 function routineVersionQuery_(params) {
-  var all = getRoutineVersions_();
-  if (String(params.type) === 'routineVersions') {
-    return json_({ status: 'ok', routineVersions: all, version: VERSION });
+  var athleteId = params.athleteId ? String(params.athleteId).trim() : '';
+  if (!athleteId) {
+    return json_({ status: 'error', message: 'athleteId is required', version: VERSION });
   }
+
+  /* 版に athleteId が無い行は、routineId から Favorites 側の所有者を引いて補う
+     (移行が途中でも、片方だけ入っていれば正しく絞れるようにする) */
+  var favs = getFavorites_();
+  var alive = {}, ownerOfRoutine = {};
+  favs.forEach(function (f) {
+    alive[f.id] = true;
+    if (f.athleteId) ownerOfRoutine[f.id] = f.athleteId;
+  });
+  function ownerOf_(v) { return v.athleteId || ownerOfRoutine[v.routineId] || ''; }
+
+  var all = getRoutineVersions_();
+  var ownerless = 0;
+  var mine = all.filter(function (v) {
+    var own = ownerOf_(v);
+    if (!own) { ownerless++; return false; }   /* 所有者不明は返さない */
+    return own === athleteId;
+  });
+
+  if (String(params.type) === 'routineVersions') {
+    return json_({
+      status: 'ok', athleteId: athleteId,
+      routineVersions: mine, ownerlessSkipped: ownerless, version: VERSION
+    });
+  }
+
   var date = dateStrOrEmpty_(params.date || '');
   if (!date) {
     return json_({ status: 'error', message: 'date is required as YYYY-MM-DD', version: VERSION });
@@ -247,16 +294,14 @@ function routineVersionQuery_(params) {
 
   /* 削除されたルーティーンの版も返す(過去の大会の構成を引けなくなると困るため)。
      ただし今も一覧にあるかどうかは active で分かるようにしておく。 */
-  var alive = {};
-  getFavorites_().forEach(function (f) { alive[f.id] = true; });
-
-  /* その日に有効だった版 = validFrom <= date <= validTo(空なら無期限) */
-  var hits = all.filter(function (v) {
+  var hits = mine.filter(function (v) {
     if (routineId && v.routineId !== routineId) return false;
+    /* その日に有効だった版 = validFrom <= date <= validTo(空なら無期限) */
     return v.validFrom <= date && (!v.validTo || date <= v.validTo);
   }).map(function (v) {
     return {
       routineId: v.routineId,
+      athleteId: ownerOf_(v),
       routineName: v.routineName,
       versionId: v.versionId,
       validFrom: v.validFrom,
@@ -269,8 +314,9 @@ function routineVersionQuery_(params) {
   return json_({
     status: 'ok',
     date: date,
-    athleteId: params.athleteId ? String(params.athleteId).trim() : '',
+    athleteId: athleteId,
     routines: hits,
+    ownerlessSkipped: ownerless,   /* 定常状態では常に0。0でなければ割り当て漏れ */
     version: VERSION
   });
 }
@@ -331,10 +377,23 @@ function ensureVersionsSheet_() {
     sh = ss.insertSheet(VERSIONS_SHEET);
     sh.getRange(1, 1, 1, VERSIONS_HEADERS.length).setValues([VERSIONS_HEADERS]);
     sh.setFrozenRows(1);
-    /* validFrom / validTo は書式なしテキストにしておく。
-       Sheetsが日付型に変えてしまうと、手で開いて直したときに表記が揺れるため。 */
-    sh.getRange(2, 4, sh.getMaxRows() - 1, 2).setNumberFormat('@');
+  } else {
+    /* 既存シートに athleteId 列が無ければ routineId の直後に足す */
+    var head = headers_(sh);
+    if (head.indexOf('athleteId') < 0) {
+      var after = head.indexOf('routineId') + 1;   /* 1始まりの列番号 */
+      if (after < 1) after = sh.getLastColumn();
+      sh.insertColumnAfter(after);
+      sh.getRange(1, after + 1).setValue('athleteId');
+    }
   }
+  /* validFrom / validTo は書式なしテキストにしておく。
+     Sheetsが日付型に変えてしまうと、手で開いて直したときに表記が揺れるため。
+     列位置は名前から引く(列を足しても壊れないように)。 */
+  var h2 = headers_(sh);
+  var cf = h2.indexOf('validFrom'), ct = h2.indexOf('validTo');
+  if (cf >= 0 && sh.getMaxRows() > 1) sh.getRange(2, cf + 1, sh.getMaxRows() - 1, 1).setNumberFormat('@');
+  if (ct >= 0 && sh.getMaxRows() > 1) sh.getRange(2, ct + 1, sh.getMaxRows() - 1, 1).setNumberFormat('@');
   return sh;
 }
 
@@ -377,10 +436,34 @@ function setVersionCell_(sh, head, rowNo, colName, value) {
   sh.getRange(rowNo, c + 1).setValue(value);
 }
 
+/* Favorites に athleteId 列が無ければ足す。書き込みのときだけ呼ぶ。 */
+function ensureFavoritesAthleteColumn_() {
+  var sh = sheet_(FAVORITES_SHEET);
+  var head = headers_(sh);
+  if (head.indexOf('athleteId') < 0) {
+    sh.insertColumnAfter(1);
+    sh.getRange(1, 2).setValue('athleteId');
+    head = headers_(sh);
+  }
+  return sh;
+}
+
+/* ヘッダー名で並べた1行に変換する(列を足しても順序に依存しないようにするため) */
+function favoriteRowByHeaders_(head, p) {
+  return head.map(function (h) {
+    if (h === 'skillIds') return Array.isArray(p.skillIds) ? p.skillIds.join(',') : (p.skillIds || '');
+    var v = p[h];
+    return (v === null || v === undefined) ? '' : v;
+  });
+}
+
 function addFavorite_(p) {
-  var sh = sheet_('Favorites');
-  var ids = Array.isArray(p.skillIds) ? p.skillIds.join(',') : (p.skillIds || '');
-  sh.appendRow([p.id || '', p.name || '', ids, p.createdAt || (new Date()).getTime()]);
+  var sh = ensureFavoritesAthleteColumn_();
+  var head = headers_(sh);
+  sh.appendRow(favoriteRowByHeaders_(head, {
+    id: p.id || '', athleteId: p.athleteId || '', name: p.name || '',
+    skillIds: p.skillIds, createdAt: p.createdAt || (new Date()).getTime()
+  }));
   /* 新規登録の時点で初期版を1つ作る。版を持たないルーティーンを増やさないため。
      古いアプリ(版を送ってこないHTML)から来た場合でも落ちないように、無ければ作らない。 */
   if (p.version) {
@@ -411,7 +494,7 @@ function updateFavorite_(p) {
     if (!id) return { status: 'error', message: 'id is required' };
 
     /* --- Favorites のヘッドを更新 --- */
-    var fsh = sheet_('Favorites');
+    var fsh = ensureFavoritesAthleteColumn_();
     var fhead = headers_(fsh);
     var fdata = fsh.getDataRange().getValues();
     var idCol = fhead.indexOf('id');
@@ -420,8 +503,13 @@ function updateFavorite_(p) {
       if (String(fdata[r][idCol]).trim() !== id) continue;
       var nameCol = fhead.indexOf('name');
       var idsCol = fhead.indexOf('skillIds');
+      var aidCol = fhead.indexOf('athleteId');
       if (nameCol >= 0) fsh.getRange(r + 1, nameCol + 1).setValue(p.name || '');
       if (idsCol >= 0) fsh.getRange(r + 1, idsCol + 1).setValue(Array.isArray(p.skillIds) ? p.skillIds.join(',') : (p.skillIds || ''));
+      /* 所有者は編集で変えない。空のときだけ、送られてきた値で埋める(移行の取りこぼし対策) */
+      if (aidCol >= 0 && p.athleteId && !String(fdata[r][aidCol]).trim()) {
+        fsh.getRange(r + 1, aidCol + 1).setValue(p.athleteId);
+      }
       updatedHead++;
     }
 
@@ -506,6 +594,67 @@ function deleteFavorite_(p) {
    (すでに版を持っているルーティーンは飛ばす)。
    validFrom を十分に古い日付にするのは、過去の記録が版なしで孤立しないようにするため。
    ===================================================================== */
+/* =====================================================================
+   移行: 登録ルーティーンに所有者(athleteId)を入れる  ★2026-08-08 追加
+   ---------------------------------------------------------------------
+   エディタの実行メニューから1回だけ実行する。何度実行しても安全。
+     1. Favorites / RoutineVersions に athleteId 列が無ければ足す
+     2. OWNER_ASSIGNMENT に書いた routineId → athleteId を Favorites に入れる
+     3. RoutineVersions の athleteId を、Favorites 側の所有者で埋める
+        (版は routineId でルーティーンに属するので、所有者はヘッドから引ける)
+   すでに値が入っている行は上書きしない。
+   実行後、所有者が空のまま残った件数をログに出す。ここが0になるのが正しい状態。
+   ===================================================================== */
+function migrateRoutineOwners() {
+  var fsh = ensureFavoritesAthleteColumn_();
+  var fhead = headers_(fsh);
+  var fdata = fsh.getDataRange().getValues();
+  var fIdCol = fhead.indexOf('id'), fAidCol = fhead.indexOf('athleteId'), fNameCol = fhead.indexOf('name');
+
+  var assigned = [], already = [], unknown = [];
+  var ownerOf = {};
+  for (var r = 1; r < fdata.length; r++) {
+    var rid = String(fdata[r][fIdCol]).trim();
+    if (!rid) continue;
+    var cur = fAidCol >= 0 ? String(fdata[r][fAidCol]).trim() : '';
+    var nm = fNameCol >= 0 ? String(fdata[r][fNameCol]) : rid;
+    if (cur) { ownerOf[rid] = cur; already.push(nm + '(' + cur + ')'); continue; }
+    var want = OWNER_ASSIGNMENT[rid] || '';
+    if (!want) { unknown.push(nm + ' [' + rid + ']'); continue; }
+    fsh.getRange(r + 1, fAidCol + 1).setValue(want);
+    ownerOf[rid] = want;
+    assigned.push(nm + ' → ' + want);
+  }
+
+  /* --- 版の台帳にも所有者を入れる --- */
+  var vsh = ensureVersionsSheet_();
+  var vhead = headers_(vsh);
+  var vAidCol = vhead.indexOf('athleteId'), vRidCol = vhead.indexOf('routineId');
+  var vlast = vsh.getLastRow();
+  var vFilled = 0, vOwnerless = 0;
+  if (vlast >= 2 && vAidCol >= 0 && vRidCol >= 0) {
+    var vals = vsh.getRange(2, 1, vlast - 1, vsh.getLastColumn()).getValues();
+    for (var i = 0; i < vals.length; i++) {
+      var vr = String(vals[i][vRidCol]).trim();
+      if (!vr) continue;
+      var have = String(vals[i][vAidCol]).trim();
+      if (have) continue;
+      var own = ownerOf[vr] || OWNER_ASSIGNMENT[vr] || '';
+      if (own) { vsh.getRange(i + 2, vAidCol + 1).setValue(own); vFilled++; }
+      else { vOwnerless++; }
+    }
+  }
+
+  dropCache_();
+  var msg = '所有者を付与: ' + (assigned.length ? assigned.join(' / ') : 'なし') +
+    '\nすでに所有者あり: ' + (already.length ? already.join(' / ') : 'なし') +
+    '\n★割り当て先が未定義のルーティーン: ' + (unknown.length ? unknown.join(' / ') : 'なし') +
+    '\n版に所有者を反映: ' + vFilled + '件 / 所有者不明のまま残った版: ' + vOwnerless + '件' +
+    '\n(定常状態では「未定義」も「所有者不明のまま」も0件が正しい)';
+  Logger.log(msg);
+  return msg;
+}
+
 function migrateRoutineVersions() {
   var favs = getFavorites_();
   var vsh = ensureVersionsSheet_();
@@ -522,6 +671,7 @@ function migrateRoutineVersions() {
     var v = {
       versionId: 'rv_mig_' + f.id,
       routineId: f.id,
+      athleteId: f.athleteId || OWNER_ASSIGNMENT[f.id] || '',
       routineName: f.name,
       validFrom: MIN_VALID_FROM,
       validTo: '',

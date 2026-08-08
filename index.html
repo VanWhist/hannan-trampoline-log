@@ -668,8 +668,8 @@ var backendError = null;       // 直近の通信エラーメッセージ(あれ
    起動時はまずそれを表示して、裏で最新を取り直して差し替える。
    キャッシュはあくまで表示を早く出すためのもので、正はいつでもスプレッドシート側。 */
 var CACHE_KEY = "hannan-trampoline-log:data";
-var CACHE_VERSION = 2;   /* 保存形式を変えたときに +1 する。古いキャッシュは自動的に無視される
-                            (2: ルーティーンの版 routineVersions を追加) */
+var CACHE_VERSION = 3;   /* 保存形式を変えたときに +1 する。古いキャッシュは自動的に無視される
+                            (2: ルーティーンの版 routineVersions を追加 / 3: 所有者 athleteId を追加) */
 
 function saveDataCache() {
   try {
@@ -1360,8 +1360,9 @@ function setDisabled_(id, disabled) {
 function refreshRoutineDefValidity() {
   var nameOk = !!(S.routine.name || "").trim();
   var hasSkill = S.routine.skills.some(function (r) { return !!r.skillId; });
-  setNote_("routine-def-note", !nameOk ? "ルーティーン名を入力すると登録できます" : (!hasSkill ? "技を1つ以上選択すると登録できます" : ""));
-  setDisabled_("routine-def-save", !nameOk || !hasSkill);
+  var athOk = !!S.athleteId;   /* 所有者が決まらないルーティーンを作らせない */
+  setNote_("routine-def-note", !athOk ? "上部で選手を選択すると登録できます" : (!nameOk ? "ルーティーン名を入力すると登録できます" : (!hasSkill ? "技を1つ以上選択すると登録できます" : "")));
+  setDisabled_("routine-def-save", !athOk || !nameOk || !hasSkill);
 }
 function setRoutineName(v) { S.routine.name = v; refreshRoutineDefValidity(); }
 function setRoutineExecFavorite(id) {
@@ -1495,6 +1496,7 @@ function normalizeVersions(arr) {
     out.push({
       versionId: String(v.versionId),
       routineId: String(v.routineId),
+      athleteId: v.athleteId == null ? "" : String(v.athleteId).trim(),
       routineName: v.routineName == null ? "" : String(v.routineName),
       validFrom: isDateStr(v.validFrom) ? String(v.validFrom) : MIN_VALID_FROM,
       validTo: isDateStr(v.validTo) ? String(v.validTo) : "",
@@ -1507,6 +1509,30 @@ function normalizeVersions(arr) {
     if (a.routineId !== b.routineId) return a.routineId < b.routineId ? -1 : 1;
     return a.validFrom < b.validFrom ? -1 : (a.validFrom > b.validFrom ? 1 : 0);
   });
+}
+
+/* ---- ルーティーンの所有者(athleteId) ----
+   ルーティーンは選手ごとのもの。選手を切り替えたら、その選手のものだけを見せる。
+   所有者が空の行(移行前のデータ)は「所有者なし」で、UIでは全員に見せて編集で拾えるようにする。
+   分析用の照会エンドポイントでは所有者なしを返さない(答えられないため)。 */
+function ownerOfFavorite(f) { return f && f.athleteId ? String(f.athleteId) : ""; }
+/* 今選んでいる選手のルーティーンか。所有者なしは全員に見せる(移行の取りこぼしを画面から救うため) */
+function favoriteVisible(f) {
+  var own = ownerOfFavorite(f);
+  if (!own) return true;
+  return !S.athleteId || own === S.athleteId;
+}
+function visibleFavorites() { return FAVORITES.filter(favoriteVisible); }
+/* 版の所有者。版に入っていなければ Favorites 側から引く */
+function ownerOfVersion(v) {
+  if (v && v.athleteId) return String(v.athleteId);
+  var f = FAVORITES.filter(function (x) { return x.id === v.routineId; })[0];
+  return ownerOfFavorite(f);
+}
+function versionVisible(v) {
+  var own = ownerOfVersion(v);
+  if (!own) return true;
+  return !S.athleteId || own === S.athleteId;
 }
 
 /* あるルーティーンの版を、開始日の古い順で返す */
@@ -1553,7 +1579,8 @@ function versionSkillListHtml(v) {
 function routineDefValid() {
   var name = (S.routine.name || "").trim();
   var validSkills = S.routine.skills.filter(function (r) { return !!r.skillId; });
-  return !!name && validSkills.length > 0;
+  /* 選手を選んでいないと所有者が決まらない。所有者のないルーティーンを増やさないため必須にする */
+  return !!S.athleteId && !!name && validSkills.length > 0;
 }
 /* 下書きの技構成(空行を除いた skillId の並び) */
 function draftSkillIds() {
@@ -1571,16 +1598,19 @@ function saveRoutineDef() {
   var favCreatedAt = Date.now();
   var favSkillIds = draftSkillIds();
   var vf = isDateStr(S.routineValidFrom) ? S.routineValidFrom : todayStr();
+  /* 所有者は「今選んでいる選手」。複製もこの関数を通るので、複製先は選択中の選手になる
+     (他の選手の構成をコピーして自分のものとして使う、というのが複製の主な用途) */
+  var owner = S.athleteId || "";
   var version = {
-    versionId: nextVerId(), routineId: favId, routineName: name,
+    versionId: nextVerId(), routineId: favId, athleteId: owner, routineName: name,
     validFrom: vf, validTo: "", skillIds: favSkillIds.slice(),
     createdAt: favCreatedAt, updatedAt: favCreatedAt
   };
-  FAVORITES.push({ id: favId, name: name, skillIds: favSkillIds, createdAt: favCreatedAt });
+  FAVORITES.push({ id: favId, athleteId: owner, name: name, skillIds: favSkillIds, createdAt: favCreatedAt });
   /* 新規登録の時点で必ず初期版を1つ作る。版を持たないルーティーンを増やさないため */
   ROUTINE_VERSIONS.push(version);
   saveDataCache();
-  syncToBackend({ type: "addFavorite", id: favId, name: name, skillIds: favSkillIds, createdAt: favCreatedAt, version: version }, "ルーティーン登録");
+  syncToBackend({ type: "addFavorite", id: favId, athleteId: owner, name: name, skillIds: favSkillIds, createdAt: favCreatedAt, version: version }, "ルーティーン登録");
   exitRoutineEdit();
   S.routineDefSavingFlash = true;
   render();
@@ -1597,6 +1627,8 @@ function updateRoutineDef() {
   var vs = versionsOf(fav.id);
   var cur = currentVersionOf(fav.id);
   var now = Date.now();
+  /* 所有者は編集で変えない。移行前で空のままなら、今選んでいる選手を所有者として拾う */
+  var favOwner = ownerOfFavorite(fav) || S.athleteId || "";
 
   /* 技構成が同じ = 名前だけの変更(または変更なし)。版は増やさない */
   if (cur && sameSkillIds(cur.skillIds, newSkillIds)) {
@@ -1639,7 +1671,7 @@ function updateRoutineDef() {
       /* 版をまだ1つも持たないルーティーン(移行前のデータ)。
          過去の記録が版なしで孤立しないよう、旧構成の初期版をここで作ってから閉じる。 */
       var seed = {
-        versionId: nextVerId(), routineId: fav.id, routineName: fav.name,
+        versionId: nextVerId(), routineId: fav.id, athleteId: favOwner, routineName: fav.name,
         validFrom: MIN_VALID_FROM, validTo: prevDayStr(vf), skillIds: (fav.skillIds || []).slice(),
         createdAt: fav.createdAt || now, updatedAt: now
       };
@@ -1647,7 +1679,7 @@ function updateRoutineDef() {
       ops.push({ op: "add", version: seed });
     }
     var fresh = {
-      versionId: nextVerId(), routineId: fav.id, routineName: name,
+      versionId: nextVerId(), routineId: fav.id, athleteId: favOwner, routineName: name,
       validFrom: vf, validTo: "", skillIds: newSkillIds.slice(),
       createdAt: now, updatedAt: now
     };
@@ -1657,9 +1689,10 @@ function updateRoutineDef() {
 
   fav.name = name;
   fav.skillIds = newSkillIds.slice();
+  if (!fav.athleteId && favOwner) fav.athleteId = favOwner;   /* 移行前の行を編集で拾う */
   ROUTINE_VERSIONS = normalizeVersions(ROUTINE_VERSIONS);
   saveDataCache();
-  syncToBackend({ type: "updateFavorite", id: fav.id, name: name, skillIds: newSkillIds, renameAllVersions: false, versionOps: ops }, "ルーティーンの更新");
+  syncToBackend({ type: "updateFavorite", id: fav.id, athleteId: favOwner, name: name, skillIds: newSkillIds, renameAllVersions: false, versionOps: ops }, "ルーティーンの更新");
   finishRoutineDefSave();
 }
 
@@ -2042,8 +2075,14 @@ function renderRoutineSkillRow(idx, row) {
 }
 
 function renderFavoritesSection() {
-  if (!FAVORITES.length) return '<div class="empty-card">保存されたお気に入りルーティーンはまだありません</div>';
-  return FAVORITES.map(function (f) {
+  /* 登録ルーティーンは選手ごと。選択中の選手のものだけを出す */
+  var list = visibleFavorites();
+  if (!list.length) {
+    return '<div class="empty-card">' +
+      (FAVORITES.length ? "この選手に登録されたルーティーンはまだありません" : "保存されたお気に入りルーティーンはまだありません") +
+      "</div>";
+  }
+  return list.map(function (f) {
     var confirming = S.confirmDeleteFavId === f.id;
     var editing = S.routineEditId === f.id;
     var total = routineTotalDD(f.skillIds.map(function (id) { return { skillId: id }; }));
@@ -2107,7 +2146,9 @@ function renderRoutineLandingBlock(fav) {
 
 function renderRoutineExecCard() {
   var fav = S.routineExec.favoriteId ? FAVORITES.filter(function (f) { return f.id === S.routineExec.favoriteId; })[0] : null;
-  var favOptions = FAVORITES.map(function (f) {
+  /* プルダウンも選択中の選手のものだけ。他の選手の構成で記録してしまうのを防ぐ */
+  var favList = visibleFavorites();
+  var favOptions = favList.map(function (f) {
     return '<option value="' + f.id + '"' + (S.routineExec.favoriteId === f.id ? " selected" : "") + ">" + escHtml(f.name) + "</option>";
   }).join("");
   var tDetail = computeTScore(S.routineExec.airTime);
@@ -2131,12 +2172,12 @@ function renderRoutineExecCard() {
       '<div style="width:100%;font-size:11px;line-height:1.7;color:#9FBBAA;margin-top:8px;">' + names.map(escHtml).join(" / ") + "</div>" +
       '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';margin-top:6px;">技' + fav.skillIds.length + "本 ・合計DD " + fmtDD(routineTotalDD(fav.skillIds.map(function (sid) { return { skillId: sid }; }))) + "</span>";
   } else {
-    routineDisplay = '<div class="empty-card">' + (FAVORITES.length ? "上のプルダウンからルーティーンを選択してください" : "登録されたルーティーンがありません。下の「ルーティーンを登録」カードで登録してください。") + "</div>";
+    routineDisplay = '<div class="empty-card">' + (favList.length ? "上のプルダウンからルーティーンを選択してください" : "この選手に登録されたルーティーンがありません。下の「ルーティーンを登録」カードで登録してください。") + "</div>";
   }
   return (
     '<div class="card raised section">' +
     '<div><span class="field-label">ルーティーン実施記録</span></div>' +
-    (FAVORITES.length
+    (favList.length
       ? ('<div class="select-wrap"><select class="select-input" onchange="setRoutineExecFavorite(this.value)"><option value="">登録したルーティーンを選択</option>' + favOptions + "</select><span class=\"select-chevron\">" + iconChevron(16, "#6E8779") + "</span></div>")
       : "") +
     routineDisplay +
@@ -2167,7 +2208,7 @@ function renderRoutineDefCard() {
   var atMax = S.routine.skills.length >= MAX_ROUTINE_SKILLS;
   var nameOk = !!(S.routine.name || "").trim();
   var hasSkill = S.routine.skills.some(function (r) { return !!r.skillId; });
-  var blockReason = !nameOk ? "ルーティーン名を入力すると登録できます" : (!hasSkill ? "技を1つ以上選択すると登録できます" : "");
+  var blockReason = !S.athleteId ? "上部で選手を選択すると登録できます" : (!nameOk ? "ルーティーン名を入力すると登録できます" : (!hasSkill ? "技を1つ以上選択すると登録できます" : ""));
 
   var editing = !!S.routineEditId;
   var editFav = editing ? FAVORITES.filter(function (f) { return f.id === S.routineEditId; })[0] : null;
@@ -2204,7 +2245,7 @@ function renderRoutineDefCard() {
     validFromField +
     (verNote ? '<div class="landing-hint">' + verNote + "</div>" : "") +
     '<div><span class="field-label">登録済みルーティーン</span><div style="margin-top:8px;">' + renderFavoritesSection() + "</div></div>" +
-    (ROUTINE_VERSIONS.length ? '<button class="add-row-btn" onclick="openVersionHistory(\'all\')"><span>版の履歴をすべて見る</span></button>' : "") +
+    (routineIdsWithVersions().length ? '<button class="add-row-btn" onclick="openVersionHistory(\'all\')"><span>版の履歴をすべて見る</span></button>' : "") +
     (S.routineDefError ? '<div class="date-warning">⚠️ ' + escHtml(S.routineDefError) + "</div>" : "") +
     '<div class="sub-label" id="routine-def-note" style="color:' + COLORS.amber + ';' + (blockReason ? "" : "display:none;") + '">' + (blockReason ? "※" + blockReason : "") + "</div>" +
     '<button id="routine-def-save" class="save-btn' + (S.routineDefSavingFlash ? " flash" : "") + '"' + (!nameOk || !hasSkill ? " disabled" : "") + ' onclick="saveRoutineDef()">' +
@@ -2522,11 +2563,16 @@ function renderLandingViewModal() {
 function openVersionHistory(id) { S.versionHistoryId = id; render(); }
 function closeVersionHistory() { S.versionHistoryId = null; render(); }
 
-/* 版を持つ routineId を、今の一覧の並び(登録順)→ 削除済みの順に返す */
+/* 版を持つ routineId を、今の一覧の並び(登録順)→ 削除済みの順に返す。
+   選択中の選手のものだけに絞る(削除済みルーティーンの版も、所有者で絞る) */
 function routineIdsWithVersions() {
   var seen = {}, out = [];
-  FAVORITES.forEach(function (f) { if (versionsOf(f.id).length) { seen[f.id] = true; out.push(f.id); } });
-  ROUTINE_VERSIONS.forEach(function (v) { if (!seen[v.routineId]) { seen[v.routineId] = true; out.push(v.routineId); } });
+  visibleFavorites().forEach(function (f) { if (versionsOf(f.id).length) { seen[f.id] = true; out.push(f.id); } });
+  ROUTINE_VERSIONS.forEach(function (v) {
+    if (seen[v.routineId]) return;
+    if (!versionVisible(v)) return;
+    seen[v.routineId] = true; out.push(v.routineId);
+  });
   return out;
 }
 function routineDisplayName(routineId) {
