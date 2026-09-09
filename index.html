@@ -794,9 +794,148 @@ function emptyRoutineSkillRow() {
 function emptyRoutineDraft() {
   return { name: "", skills: [emptyRoutineSkillRow()] };
 }
-function emptyRoutineExecDraft() {
+/* その選手が最後に実施記録を残したルーティーンのidを返す(無ければ空文字)。
+   実施記録は favoriteId ではなく routineName で保存されるので、名前で引き当てる。
+   ENTRIES は新しい順に並んでいるので、先頭から見て最初に一致したものが直近になる。 */
+function recentFavoriteIdFor(athleteId) {
+  if (!athleteId) return "";
+  for (var i = 0; i < ENTRIES.length; i++) {
+    var e = ENTRIES[i];
+    if (e.mode !== "routine" || e.athleteId !== athleteId || !e.routineName) continue;
+    var f = FAVORITES.filter(function (x) {
+      return x.name === e.routineName && (!x.athleteId || String(x.athleteId) === String(athleteId));
+    })[0];
+    if (f) return f.id;   /* 削除済み・改名済みのルーティーンは引き当たらないので、さらに前を見る */
+  }
+  return "";
+}
+/* ================= 本番構成の完走カウンター =================
+   目的: 「A案をこれまでに何本完走したか」を、本人が跳んだ直後に確認できるようにする。
+   数え方の決めごと(コーチと合意済み):
+     ・数えるのは「完走」だけ。中断は数に入らないが、減点にもならない(通算なので途切れない)。
+     ・そのルーティーンを登録した日以降の記録だけを数える。
+     ・締切日を決めていればその日まで。過ぎたら数は止まり、確定表示に変わる。
+     ・部分ルーティン(頭から5本など)は別のルーティーンとして別々に数える。
+       A案の本数に混ざらないので、基準の意味が変わらない。
+     ・目標本数はここでは表示しない(跳ぶ直前に「あと何本」を意識させないため)。
+       設定した数は設定画面にだけ出す。
+   締切日と目標本数は、この端末のブラウザに保存する。 */
+var ROUTINE_GOAL_KEY = "tramp.routineGoals.v1";
+function loadRoutineGoals() {
+  try { return JSON.parse(localStorage.getItem(ROUTINE_GOAL_KEY) || "{}") || {}; } catch (e) { return {}; }
+}
+function routineGoalFor(favId) {
+  var g = loadRoutineGoals()[favId] || {};
+  return { deadline: g.deadline || "", target: g.target || "" };
+}
+function setRoutineGoal(favId, key, value) {
+  var all = loadRoutineGoals();
+  var g = all[favId] || {};
+  g[key] = value;
+  all[favId] = g;
+  try { localStorage.setItem(ROUTINE_GOAL_KEY, JSON.stringify(all)); } catch (e) {}
+  render();
+}
+/* ルーティーンを登録した日(JST)。これより前の記録は数えない */
+function routineStartDate(fav) {
+  if (!fav || !fav.createdAt) return "";
+  return new Date(Number(fav.createdAt) + 9 * 60 * 60000).toISOString().slice(0, 10);
+}
+/* 完走本数を数える。実施記録は favoriteId を持たないので、名前と所有者で引き当てる */
+function routineRunStats(fav, athleteId) {
+  var out = { done: 0, from: routineStartDate(fav), deadline: "", closed: false, target: "" };
+  if (!fav || !athleteId) return out;
+  var goal = routineGoalFor(fav.id);
+  out.deadline = goal.deadline;
+  out.target = goal.target;
+  out.closed = !!goal.deadline && todayStr() > goal.deadline;
+  ENTRIES.forEach(function (e) {
+    if (e.mode !== "routine" || e.athleteId !== athleteId) return;
+    if (e.routineName !== fav.name) return;
+    if (out.from && e.date < out.from) return;
+    if (goal.deadline && e.date > goal.deadline) return;
+    if (e.result === "success") out.done++;
+  });
+  return out;
+}
+/* カウンターの1行。数だけを出す(分数にしない・警告を出さない・達成/未達の判定文を出さない) */
+/* ダッシュボードに出す、構成ごとの完走本数。締切日と目標本数の設定入口もここに置く
+   (記録タブには置かない。跳んでいる最中に目標や残り本数が目に入らないようにするため) */
+function renderRoutineCounterCard(athleteId) {
+  var favs = FAVORITES.filter(function (f) {
+    return !f.athleteId || String(f.athleteId) === String(athleteId);
+  });
+  if (!favs.length) return "";
+  var rows = favs.map(function (f) {
+    var st = routineRunStats(f, athleteId);
+    var period = st.deadline
+      ? (escHtml(st.from) + " 〜 " + escHtml(st.deadline) + (st.closed ? "(期間終了)" : ""))
+      : (escHtml(st.from) + " 〜");
+    return (
+      '<div style="padding:10px 0;border-top:1px solid rgba(255,255,255,0.06);">' +
+      '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;">' +
+      '<span style="font-size:14px;font-weight:700;">' + escHtml(f.name) + "</span>" +
+      '<span style="color:' + COLORS.accent + ';font-size:20px;font-weight:700;white-space:nowrap;">' + st.done + '<span style="font-size:12px;font-weight:400;margin-left:2px;">本</span></span>' +
+      "</div>" +
+      '<div class="stat-sub" style="margin-top:2px;">' + (st.closed ? "期間内完走" : "完走") + " ・" + period + "</div>" +
+      "</div>"
+    );
+  }).join("");
+  return (
+    '<div class="chart-card">' +
+    '<div class="chart-title">構成ごとの完走本数</div>' +
+    rows +
+    '<button class="chip-btn" style="width:100%;margin-top:10px;font-size:12px;" onclick="openRoutineGoalModal(\'' + athleteId + '\')">締切日と目標本数の設定</button>' +
+    "</div>"
+  );
+}
+function openRoutineGoalModal(athleteId) { S.routineGoalModal = athleteId; render(); }
+function closeRoutineGoalModal() { S.routineGoalModal = null; render(); }
+function renderRoutineGoalModal() {
+  if (!S.routineGoalModal) return "";
+  var athleteId = S.routineGoalModal;
+  var athlete = ATHLETES.filter(function (a) { return a.id === athleteId; })[0];
+  var favs = FAVORITES.filter(function (f) { return !f.athleteId || String(f.athleteId) === String(athleteId); });
+  var rows = favs.map(function (f) {
+    var g = routineGoalFor(f.id);
+    var st = routineRunStats(f, athleteId);
+    return (
+      '<div class="card section" style="margin-top:10px;">' +
+      '<div><span class="field-label">' + escHtml(f.name) + "</span></div>" +
+      '<div class="stat-sub">登録日 ' + escHtml(st.from) + " から数えています</div>" +
+      '<div style="margin-top:8px;"><span class="num-field-label">締切日</span>' +
+      '<input class="num-input" type="date" value="' + escAttr(g.deadline) + '" onchange="setRoutineGoal(\'' + f.id + '\',\'deadline\',this.value)"></div>' +
+      '<div style="margin-top:8px;"><span class="num-field-label">目標本数</span>' +
+      '<input class="num-input" type="text" inputmode="numeric" placeholder="未設定" value="' + escAttr(g.target) + '" oninput="setRoutineGoal(\'' + f.id + '\',\'target\',this.value)"></div>' +
+      "</div>"
+    );
+  }).join("");
+  return (
+    '<div class="video-modal-overlay open" onclick="closeRoutineGoalModal()"><div class="video-modal-box" onclick="event.stopPropagation()">' +
+    '<div class="chart-card">' +
+    '<div class="chart-title">締切日と目標本数' + (athlete ? "(" + escHtml(athlete.name) + ")" : "") + "</div>" +
+    '<div class="stat-sub">締切日を決めると、その日を過ぎた記録は数に入らなくなります。目標本数はここに控えておくだけで、記録画面には出しません。</div>' +
+    (favs.length ? rows : '<div class="empty-card">登録されたルーティーンがありません</div>') +
+    '<div class="sub-label" style="margin-top:10px;">この設定はこの端末にだけ保存されます。</div>' +
+    "</div>" +
+    '<button class="video-modal-close" onclick="closeRoutineGoalModal()">閉じる</button>' +
+    "</div></div>"
+  );
+}
+function routineCounterLine(fav, athleteId) {
+  var st = routineRunStats(fav, athleteId);
+  var label = st.closed ? "期間内完走" : "完走";
+  return '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';border-color:#24603F;">' +
+    escHtml(fav.name) + " " + label + " " + st.done + "本</span>";
+}
+function emptyRoutineExecDraft(athleteId) {
   /* takeoff は1本目の踏切点(1回だけタップする)。2本目以降は前の技の着床点を踏切点として引き継ぐ */
-  return { favoriteId: "", airTime: "", result: null, note: "", takeoff: null, landings: [], videoSuccessName: null, videoSuccessUrl: null, videoFailName: null, videoFailUrl: null };
+  var d = { favoriteId: "", airTime: "", result: null, note: "", takeoff: null, landings: [], videoSuccessName: null, videoSuccessUrl: null, videoFailName: null, videoFailUrl: null };
+  /* 同じルーティーンを続けて跳ぶことが多いので、直近に跳んだものを初期選択にしておく
+     (単発カードが直前の技を初期選択にするのと同じ考え方。体育館での連続入力のタップ数を減らす)。
+     結果(完走/中断)は毎回選び直す必要があるため、保存ボタンは次の1本の結果を選ぶまで押せないまま。 */
+  d.favoriteId = recentFavoriteIdFor(athleteId);
+  return d;
 }
 
 var S = {
@@ -827,6 +966,7 @@ var S = {
   videoModalUrl: null,
   videoModalCaption: "",
   jumpHistoryModal: null,
+  routineGoalModal: null,       /* 締切日・目標本数の設定モーダル。開いている選手のid */
   routineDetailModal: null,
   routineDetailPeriod: "day",
   routineDetailBin: null,
@@ -894,6 +1034,7 @@ function restoreSavedAthlete() {
   if (!stillExists) { saveAthleteId(null); return; }   // 削除された選手なら覚えを捨てる
   S.athleteId = saved;
   S.single = emptySingleDraft(S.athleteId);
+  S.routineExec = emptyRoutineExecDraft(S.athleteId);
 }
 
 function selectAthlete(id) {
@@ -901,6 +1042,9 @@ function selectAthlete(id) {
   saveAthleteId(S.athleteId);
   /* 選手を切り替えたら、その選手が最後に使った技を初期選択にし直す(入力途中の本数は持ち越さない) */
   S.single = emptySingleDraft(S.athleteId);
+  /* ルーティーンは選手ごとに分かれているので、前の選手の選択は持ち越さない
+     (持ち越すと、別の選手のルーティーンを今の選手の記録として保存できてしまう) */
+  S.routineExec = emptyRoutineExecDraft(S.athleteId);
   render();
 }
 function setDate(v) { S.date = v; render(); }
@@ -1756,7 +1900,7 @@ function saveRoutineExecEntry() {
   markDateEntered(S.date);
   saveDataCache();
   syncToBackend({ type: "saveEntry", entry: entry }, "記録");
-  S.routineExec = emptyRoutineExecDraft();
+  S.routineExec = emptyRoutineExecDraft(S.athleteId);
   S.routineExecSavingFlash = true;
   render();
   setTimeout(function () { S.routineExecSavingFlash = false; render(); }, 900);
@@ -2161,7 +2305,7 @@ function renderRoutineExecCard() {
   var tScoreModeChips = TSCORE_MODES.map(function (m) {
     return '<button class="chip-btn' + (S.tScoreMode === m.key ? " active" : "") + '" style="font-size:11px;" onclick="setTScoreMode(\'' + m.key + '\')">' + m.label + '<span class="chip-sub">' + m.sub + "</span></button>";
   }).join("");
-  var blockReason = !S.athleteId ? "上部で選手を選択すると保存できます" : (!S.routineExec.favoriteId ? "登録したルーティーンを選択すると保存できます" : (!S.routineExec.result ? "結果(成功・失敗)のどちらかを選択すると保存できます" : ""));
+  var blockReason = !S.athleteId ? "上部で選手を選択すると保存できます" : (!S.routineExec.favoriteId ? "登録したルーティーンを選択すると保存できます" : (!S.routineExec.result ? "結果(完走・中断)のどちらかを選択すると保存できます" : ""));
   var routineDisplay;
   if (fav) {
     var names = fav.skillIds.map(function (sid, i) {
@@ -2190,13 +2334,20 @@ function renderRoutineExecCard() {
     '<div class="sub-label">ストップウォッチで計測した滞空時間(任意)。草加市トランポリン協会の代替スコア計算式(タイム×係数、https://1040tramp.com/score/)による目安のTスコアです(公式の採点ではありません)。</div>' +
     renderRoutineLandingBlock(fav) +
     '<div style="margin-top:12px;"><span class="field-label">結果(必須)</span><div class="chip-grid two">' +
-    '<button class="chip-btn' + (S.routineExec.result === "success" ? " active" : "") + '" onclick="setRoutineExecResult(\'success\')">成功</button>' +
-    '<button class="chip-btn amber' + (S.routineExec.result === "fail" ? " active" : "") + '" onclick="setRoutineExecResult(\'fail\')">失敗</button>' +
-    "</div></div>" +
+    /* 「成功/失敗」ではなく「完走/中断」。起きたことをそのまま書く言葉にしている(コーチと合意済み)。
+       ヨレても最後まで跳び切れば完走。演技の質はここでは判定しない。
+       保存する値は success/fail のままなので、過去の記録と互換性がある。 */
+    '<button class="chip-btn' + (S.routineExec.result === "success" ? " active" : "") + '" onclick="setRoutineExecResult(\'success\')">完走</button>' +
+    '<button class="chip-btn amber' + (S.routineExec.result === "fail" ? " active" : "") + '" onclick="setRoutineExecResult(\'fail\')">中断</button>' +
+    "</div>" +
+    '<div class="sub-label">最後まで跳び切れたら完走です(ヨレても完走)。途中で止めたら中断。' +
+    (fav && fav.skillIds.length < 10 ? "この構成のように一部だけを跳ぶ場合は、その一部を跳び切れたら完走です。" : "") + "</div></div>" +
     '<div style="margin-top:10px;"><span class="field-label">メモ(任意)</span><textarea id="in-routine-exec-note" class="note-textarea" rows="2" placeholder="気づいたことをメモ" oninput="setRoutineExecNote(this.value)">' + escHtml(S.routineExec.note) + "</textarea></div>" +
     renderVideoPlaceholder() +
     (blockReason ? '<div class="sub-label" style="color:' + COLORS.amber + ';margin-top:8px;">※' + blockReason + "</div>" : "") +
     '<button class="save-btn' + (S.routineExecSavingFlash ? " flash" : "") + '"' + (!S.athleteId || !S.routineExec.favoriteId || !S.routineExec.result ? " disabled" : "") + ' onclick="saveRoutineExecEntry()">' + (S.routineExecSavingFlash ? iconCheck(16, "#052A1B") + "<span>保存しました</span>" : "<span>実施記録を保存</span>") + "</button>" +
+    /* 保存ボタンのすぐ下に置く。跳んで保存した直後に、目を動かさずに数が増えたのが見える位置 */
+    (fav ? '<div style="margin-top:10px;text-align:center;">' + routineCounterLine(fav, S.athleteId) + "</div>" : "") +
     "</div>"
   );
 }
@@ -2260,7 +2411,7 @@ function renderRoutineDefCard() {
 function renderVideoPlaceholder() {
   return (
     '<div style="margin-top:10px;"><span class="field-label">動画</span>' +
-    '<div class="empty-card" style="padding:14px;font-size:12px;line-height:1.7;">動画アップロード機能は<span style="color:#FFB578;font-weight:700;">準備中</span>です。<br>近日中に、成功・失敗の動画を記録できるようになります。</div>' +
+    '<div class="empty-card" style="padding:14px;font-size:12px;line-height:1.7;">動画アップロード機能は<span style="color:#FFB578;font-weight:700;">準備中</span>です。<br>近日中に、跳んだ動画を記録できるようになります。</div>' +
     "</div>"
   );
 }
@@ -2782,8 +2933,8 @@ function renderEntryCard(e, tapToView) {
       (e.runCount ? '<span class="recent-tech-chip">実施' + e.runCount + "本</span>" : "") +
       (e.airTime ? '<span class="recent-tech-chip">タイム' + e.airTime.toFixed(2) + "秒</span>" : "") +
       (e.tScore ? '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';">目安Tスコア ' + e.tScore.toFixed(2) + "点</span>" : "") +
-      (e.result === "success" ? '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';border-color:#24603F;">成功</span>' : "") +
-      (e.result === "fail" ? '<span class="recent-tech-chip" style="color:' + COLORS.amber + ';border-color:#5A3B1E;">失敗</span>' : "");
+      (e.result === "success" ? '<span class="recent-tech-chip" style="color:' + COLORS.accent + ';border-color:#24603F;">完走</span>' : "") +
+      (e.result === "fail" ? '<span class="recent-tech-chip" style="color:' + COLORS.amber + ';border-color:#5A3B1E;">中断</span>' : "");
   }
   /* 着床位置の記録があれば、保存された内容を1行で確認できるようにする */
   var landingLine = "";
@@ -3413,7 +3564,7 @@ function renderAthleteDashboard(athleteId) {
 
   return (
     '<div class="card raised" style="text-align:center;"><div style="font-size:15px;font-weight:700;">' + escHtml(athlete.name) + "</div></div>" +
-    statsHtml + trendChart + famChart + platChart + usageChart + renderLandingDashCard(es) + renderRecentSection(athleteId)
+    statsHtml + renderRoutineCounterCard(athleteId) + trendChart + famChart + platChart + usageChart + renderLandingDashCard(es) + renderRecentSection(athleteId)
   );
 }
 
@@ -3537,7 +3688,8 @@ function renderApp() {
     renderPlatformDetailModal() +
     renderLandingModal() +
     renderLandingViewModal() +
-    renderVersionHistoryModal()
+    renderVersionHistoryModal() +
+    renderRoutineGoalModal()
   );
 }
 
